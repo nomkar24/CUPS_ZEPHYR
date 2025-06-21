@@ -1,0 +1,19 @@
+manifest:
+
+  projects:
+    - name: zephyr
+      url: https://github.com/zephyrproject-rtos/zephyr
+      revision: main
+      path: zephyr
+      west-commands: scripts/west-commands.yml
+      import:
+        name-allowlist:
+          - cmsis
+          - hal_espressif
+    - name: zlib
+      url: https://github.com/HubertYGuan/zlib
+      revision: develop
+      path: modules/lib/zlib
+
+  self:
+    path: module-app

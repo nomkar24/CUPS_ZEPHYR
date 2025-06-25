@@ -10,6 +10,7 @@ manifest:
         name-allowlist:
           - cmsis
           - hal_espressif
+          - littlefs
     - name: zlib
       url: https://github.com/HubertYGuan/zlib
       revision: develop

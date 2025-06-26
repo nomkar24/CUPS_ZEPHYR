@@ -9,13 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "zlib.h"
+#include <zlib.h>
 
 /* get definition of internal structure so we can mess with it (see pull()),
    and so we can call inflate_trees() (see cover5()) */
 #define ZLIB_INTERNAL
-#include "inftrees.h"
-#include "inflate.h"
+#include <inftrees.h>
+#include <inflate.h>
 
 #define local static
 
@@ -659,7 +659,7 @@ local void cover_fast(void)
         Z_STREAM_END);
 }
 
-int main(void)
+void infcover_main(void *p1, void *p2, void *p3)
 {
     fprintf(stderr, "%s\n", zlibVersion());
     cover_support();
@@ -668,5 +668,4 @@ int main(void)
     cover_inflate();
     cover_trees();
     cover_fast();
-    return 0;
 }

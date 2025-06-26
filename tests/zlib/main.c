@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "example.h"
+#include "infcover.h"
 
 #define MAX_STACK_SIZE 8192
 #define THREAD_PRIORITY 7
@@ -177,32 +178,10 @@ int main()
 		   mountpoint->mnt_point,
 		   sbuf.f_bsize, sbuf.f_frsize,
 		   sbuf.f_blocks, sbuf.f_bfree);
+	
+	runTest(example_main);
+	runTest(infcover_main);
 
-	int newfd;
-
-	if ((newfd = open(fname1, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0)
-	{
-		LOG_PRINTK("Unable to open file %s errno: %d\n", fname1, errno);
-		goto out;
-	}
-
-    close(newfd);
-
-	rc = lsdir(mountpoint->mnt_point);
-	if (rc < 0) {
-		LOG_PRINTK("FAIL: lsdir %s: %d\n", mountpoint->mnt_point, rc);
-		goto out;
-	}
-	size_t mallocsize = 70000;
-	void *cool = malloc(mallocsize);
-
-	if (cool == NULL)
-	{
-		LOG_PRINTK("Unable to malloc %u bytes, errno: %d\n", mallocsize, errno);
-		goto out;
-	}
-
-	free(cool);
 out:
 	rc = fs_unmount(mountpoint);
 	LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc);

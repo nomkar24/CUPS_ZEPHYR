@@ -131,7 +131,7 @@ int main(int argc, char **argv)
     unsigned char *tmp;     /* close to desired size stream */
     z_stream def, inf;      /* zlib deflate and inflate states */
 
-    ret = 69420;
+    ret = 400;
 
     size = (unsigned)ret;
 

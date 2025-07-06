@@ -13,8 +13,12 @@ manifest:
           - littlefs
     - name: zlib
       url: https://github.com/HubertYGuan/zlib
-      revision: develop
+      revision: zephyr
       path: modules/lib/zlib
+    - name: pdfio
+      url: https://github.com/HubertYGuan/pdfio
+      revision: zephyr
+      path: modules/lib/pdfio
 
   self:
     path: module-app

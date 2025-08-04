@@ -11,6 +11,7 @@ manifest:
           - cmsis
           - hal_espressif
           - littlefs
+          - mbedtls
     - name: zlib
       url: https://github.com/HubertYGuan/zlib
       revision: zephyr
@@ -19,6 +20,14 @@ manifest:
       url: https://github.com/HubertYGuan/pdfio
       revision: zephyr
       path: modules/lib/pdfio
+    - name: libcups
+      url: https://github.com/HubertYGuan/libcups
+      revision: zephyr
+      path: modules/lib/libcups
+#    - name: mbedtls
+#      url: https://github.com/HubertYGuan/mbedtls
+#      revision: zephyr
+#      path: modules/lib/mbedtls
 
   self:
     path: module-app

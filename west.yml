@@ -2,8 +2,8 @@ manifest:
 
   projects:
     - name: zephyr
-      url: https://github.com/zephyrproject-rtos/zephyr
-      revision: main
+      url: https://github.com/HubertYGuan/zephyr
+      revision: mbedtls
       path: zephyr
       west-commands: scripts/west-commands.yml
       import:

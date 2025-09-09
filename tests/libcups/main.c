@@ -454,8 +454,10 @@ static int littlefs_mount(struct fs_mount_t *mp)
 
 int main()
 {
-	/* struct fs_statvfs sbuf;
+	struct fs_statvfs sbuf;
 	int rc;
+	pthread_t top_th;
+	int err;
 
 	LOG_PRINTK("Initializing file system with littlefs\n");
 
@@ -494,15 +496,12 @@ int main()
 
 	LOG_INF("Waiting mDNS queries...");
 
-	k_sleep(K_MSEC(1000)); */
-	
-	runTest(testpthread_set_specific);
+	err = pthread_create(&top_th, NULL, ippeve_main, NULL);
+	LOG_INF("create pthread error: %d", err);
+	pthread_join(top_th, NULL);
 
-	// Register DNS-SD service
-	// ippeve_main();
-
-	/* out:
-	rc = fs_unmount(mountpoint);
-	LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc); */
+	out:
+	/* rc = fs_unmount(mountpoint);
+	LOG_PRINTK("%s unmount: %d\n", moun tpoint->mnt_point, rc); */
     return 0;
 }

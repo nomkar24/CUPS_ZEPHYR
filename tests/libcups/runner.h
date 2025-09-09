@@ -32,19 +32,22 @@ void runTest(k_thread_entry_t entry)
 #define MAX_PATH_LEN 255
 #define TEST_FILE_SIZE 547
 
-void testpthread_set_specific(void *p1, void *p2, void *p3)
+void *testpthread_set_specific(void *p1)
 {
+	LOG_MODULE_DECLARE(MAIN);
+	LOG_INF("testpthread_set_specific: beginning");
 	pthread_key_t key;
 	void *value = malloc(69);
 	int ret = 1;
 	strcpy(value, "hello world");
 	if (!value)
 	{
-		printf("could not alloc value");
-		return;
+		LOG_INF("could not alloc value");
+		return NULL;
 	}
 	pthread_key_create(&key, NULL);
 	ret = pthread_setspecific(key, value);
 	free(value);
-	printf("returning %d", ret);
+	LOG_INF("returning %d", ret);
+	return value;
 }

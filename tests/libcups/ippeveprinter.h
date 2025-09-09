@@ -71,6 +71,8 @@ extern char **environ;
 
 #include <zephyr/logging/log.h>
 
+#define DEFAULT_PORT 8000
+
 //
 // Constants...
 //
@@ -322,8 +324,8 @@ static bool		StopPrinter = false;
 // 'ippeve_main()' - Main entry to the sample server.
 //
 
-int					// O - Exit status
-ippeve_main()			// I - Command-line arguments
+void *
+ippeve_main(void *p1)			// I - Command-line arguments
 {
   LOG_MODULE_DECLARE(libcups);
   int argc = 2;
@@ -351,7 +353,7 @@ ippeve_main()			// I - Command-line arguments
   char		directory[1024] = "";	// Spool directory
   cups_array_t	*docformats = NULL;	// Supported formats
   const char	*servername = NULL;	// Server host name
-  int		serverport = 0;		// Server port number (0 = auto)
+  uint16_t		serverport = 0;		// Server port number (0 = auto)
   ippeve_printer_t *printer;		// Printer object
 
   name = "My Cool Printer";
@@ -366,8 +368,6 @@ ippeve_main()			// I - Command-line arguments
     cupsLangPrintf(stderr, _("%s: Cannot use '-a' with '-2', '-f', '-m', '-M', or '-s'."), "ippeveprinter");
     return (usage(stderr));
   }
-
-  LOG_INF("Checkpoint 1\n");
 
   // Apply defaults as needed...
   if (!directory[0])
@@ -409,10 +409,45 @@ ippeve_main()			// I - Command-line arguments
     docformats = cupsArrayNewStrings(ppm_color > 0 ? "image/jpeg,image/pwg-raster,image/urf": "image/pwg-raster,image/urf", ',');
 
   LOG_INF("Creating printer");
-  if ((printer = create_printer(servername, serverport, name, location, icon, strings, docformats, subtypes, directory, command, device_uri, output_format, attrs)) == NULL)
-    return (1);
+  if ((printer = create_printer(servername, DEFAULT_PORT, name, location, icon, strings, docformats, subtypes, directory, command, device_uri, output_format, attrs)) == NULL)
+  {
+    LOG_INF("Failed to create printer");
+    return NULL;
+  }
   LOG_INF("Created printer");
   printer->web_forms = web_forms;
+
+  LOG_INF("Registering DNSSD services");
+
+  // Build the TXT record for IPP...
+  static const char txt_record[] = {
+    "\x0c" "rp=ipp/print"
+    "\x27" "ty=ExampleCorp LaserPrinter 4000 Series"
+    "\x1c" "pdl=application/octet-stream"
+    "\x07" "Color=F"
+    "\x08" "Duplex=F"
+    "\x29" "UUID=a85c6a0f-145b-4b0a-97e8-1e8416468b4c"
+    "\x07" "TLS=1.3"
+    "\x09" "txtvers=1"
+    "\x08" "qtotal=1"
+  };
+
+
+  // Register the _printer._tcp (LPD) service type with a port number of 0 to
+  // defend our service name but not actually support LPD...
+  // CUPS_DNSSD_SERVICE_REGISTER(lpd_service, "My Example Printer", "_ipp", txt_record, 0);
+
+  // Then register the _ipp._tcp (IPP) service type with the real port number to
+  // advertise our IPP printer...
+
+  CUPS_DNSSD_SERVICE_REGISTER(ipp_service, "My Example Printer IPP", "_ipp", txt_record, DEFAULT_PORT);
+  // Then register the _ipps._tcp (IPP) service type with the real port number
+  // to advertise our IPPS printer...
+  // CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
+
+  // Similarly, register the _http._tcp,_printer (HTTP) service type with the
+  // real port number to advertise our IPP printer's web interface...
+  // CUPS_DNSSD_SERVICE_REGISTER(http_service, "My Example Printer", "_http", txt_record, DEFAULT_PORT);
 
   LOG_INF("Setting server credentials");
   cupsSetServerCredentials(keypath, printer->hostname, true);
@@ -424,8 +459,8 @@ ippeve_main()			// I - Command-line arguments
   LOG_INF("Deleting printer");
   // Destroy the printer and exit...
   delete_printer(printer);
-
-  return (0);
+  error:
+  return NULL;
 }
 
 
@@ -528,6 +563,7 @@ authenticate_request(
 static void
 clean_jobs(ippeve_printer_t *printer)	// I - Printer
 {
+  LOG_MODULE_DECLARE(libcups);
   ippeve_job_t	*job;			// Current job
   time_t	cleantime;		// Clean time
 
@@ -543,8 +579,10 @@ clean_jobs(ippeve_printer_t *printer)	// I - Printer
        job = (ippeve_job_t *)cupsArrayGetNext(printer->jobs))
     if (job->completed && job->completed < cleantime)
     {
+      LOG_INF("Found completed job, deleting...");
       cupsArrayRemove(printer->jobs, job);
       delete_job(job);
+      LOG_INF("Deleted job");
     }
     else
       break;
@@ -757,12 +795,13 @@ static ippeve_client_t *			// O - Client
 create_client(ippeve_printer_t *printer,	// I - Printer
               int            sock)	// I - Listen socket
 {
+  LOG_MODULE_DECLARE(libcups);
   ippeve_client_t	*client;		// Client
 
 
   if ((client = calloc(1, sizeof(ippeve_client_t))) == NULL)
   {
-    perror("Unable to allocate memory for client");
+    LOG_INF("Unable to allocate memory for client");
     return (NULL);
   }
 
@@ -771,7 +810,7 @@ create_client(ippeve_printer_t *printer,	// I - Printer
   // Accept the client and get the remote address...
   if ((client->http = httpAcceptConnection(sock, 1)) == NULL)
   {
-    perror("Unable to accept client connection");
+    LOG_INF("Unable to accept client connection");
 
     free(client);
 
@@ -781,7 +820,7 @@ create_client(ippeve_printer_t *printer,	// I - Printer
   httpGetHostname(client->http, client->hostname, sizeof(client->hostname));
 
   if (Verbosity)
-    fprintf(stderr, "Accepted connection from %s\n", client->hostname);
+    LOG_INF("Accepted connection from %s\n", client->hostname);
 
   return (client);
 }
@@ -799,6 +838,7 @@ create_job(ippeve_client_t *client)	// I - Client
   ipp_attribute_t	*attr;		// Job attribute
   char			uri[1024],	// job-uri value
 			uuid[64];	// job-uuid value
+  LOG_MODULE_DECLARE(libcups);
 
 
   cupsRWLockWrite(&(client->printer->rwlock));
@@ -813,7 +853,7 @@ create_job(ippeve_client_t *client)	// I - Client
   // Allocate and initialize the job object...
   if ((job = calloc(1, sizeof(ippeve_job_t))) == NULL)
   {
-    perror("Unable to allocate memory for job");
+    LOG_INF("Unable to allocate memory for job");
     cupsRWUnlock(&(client->printer->rwlock));
     return (NULL);
   }
@@ -1095,6 +1135,7 @@ create_printer(
     const char   *output_format,	// I - Output format, if any
     ipp_t        *attrs)		// I - Capability attributes
 {
+  LOG_MODULE_DECLARE(libcups);
   ippeve_printer_t	*printer;	// Printer
   int			i;		// Looping var
 #ifndef _WIN32
@@ -1276,11 +1317,11 @@ create_printer(
     "processing-stopped"
   };
 
-
 #ifndef _WIN32
   // If a command was specified, make sure it exists and is executable...
   if (command && access(command, X_OK))
   {
+    LOG_INF("Looking for command");
     if (cupsFileFind(command, getenv("PATH"), true, path, sizeof(path)))
     {
       // Found the command in the current path...
@@ -1301,6 +1342,7 @@ create_printer(
     cupsLangPrintf(stderr, _("%s: Out of memory."), "ippeveprinter");
     return (NULL);
   }
+  LOG_INF("Allocated printer memory");
 
   printer->ipv4           = -1;
   printer->ipv6           = -1;
@@ -1352,17 +1394,20 @@ create_printer(
 
     printer->hostname = strdup(cupsDNSSDCopyHostName(printer->dnssd, temp, sizeof(temp)));
   }
-
+  LOG_INF("Creating rwlock");
   cupsRWInit(&(printer->rwlock));
+  LOG_INF("Created rwlock");
 
   // Create the listener sockets...
   if (printer->port)
   {
+    LOG_INF("creating printer ipv4 listener");
     if ((printer->ipv4 = create_listener(servername, printer->port, AF_INET)) < 0)
     {
-      perror("Unable to create IPv4 listener");
+      LOG_INF("Unable to create IPv4 listener");
       goto bad_printer;
     }
+    LOG_INF("Created ipv4 listener: %d", printer->ipv4);
   }
   else
   {
@@ -1391,27 +1436,25 @@ create_printer(
     }
     else
     {
-      perror("Unable to create IPv4 listener");
+      LOG_INF("Unable to create IPv4 listener");
       goto bad_printer;
     }
   }
 
   if ((printer->ipv6 = create_listener(servername, printer->port, AF_INET6)) < 0)
   {
-    perror("Unable to create IPv6 listener");
+    LOG_INF("Unable to create IPv6 listener");
     goto bad_printer;
   }
 
   // Prepare values for the printer attributes...
-  snprintf(uuid_data, sizeof(uuid_data), "_IPPEVEPRINTER_:%s:%d:%s", printer->hostname, printer->port, printer->name);
+  /* snprintf(uuid_data, sizeof(uuid_data), "_IPPEVEPRINTER_:%s:%d:%s", printer->hostname, printer->port, printer->name);
   cupsHashData("sha2-256", (unsigned char *)uuid_data, strlen(uuid_data), sha256, sizeof(sha256));
-  snprintf(uuid, sizeof(uuid), "urn:uuid:%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", sha256[0], sha256[1], sha256[3], sha256[4], sha256[5], sha256[6], (sha256[10] & 15) | 0x30, sha256[11], (sha256[15] & 0x3f) | 0x40, sha256[16], sha256[20], sha256[21], sha256[25], sha256[26], sha256[30], sha256[31]);
+  snprintf(uuid, sizeof(uuid), "urn:uuid:%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", sha256[0], sha256[1], sha256[3], sha256[4], sha256[5], sha256[6], (sha256[10] & 15) | 0x30, sha256[11], (sha256[15] & 0x3f) | 0x40, sha256[16], sha256[20], sha256[21], sha256[25], sha256[26], sha256[30], sha256[31]);  */
+  snprintf(uuid, sizeof(uuid), "urn:uuid:a85c6a0f-145b-4b0a-97e8-1e8416468b4c");
 
-  if (Verbosity)
-  {
-    fprintf(stderr, "printer-uri-supported=\"ipp://%s:%d/ipp/print\",\"ipps://%s:%d/ipp/print\"\n", printer->hostname, printer->port, printer->hostname, printer->port);
-    fprintf(stderr, "printer-uuid=\"%s\"\n", uuid);
-  }
+  LOG_INF("printer-uri-supported=\"ipp://%s:%d/ipp/print\",\"ipps://%s:%d/ipp/print\"\n", printer->hostname, printer->port, printer->hostname, printer->port);
+  LOG_INF("printer-uuid=\"%s\"\n", uuid);
 
   // Get the maximum spool size based on the size of the filesystem used for
   // the spool directory.  If the host OS doesn't support the statfs call
@@ -1638,6 +1681,7 @@ debug_attributes(const char *title,	// I - Title
                  ipp_t      *ipp,	// I - Request/response
                  int        type)	// I - 0 = object, 1 = request, 2 = response
 {
+  LOG_MODULE_DECLARE(libcups);
   ipp_tag_t		group_tag;	// Current group
   ipp_attribute_t	*attr;		// Current attribute
   char			buffer[2048];	// String buffer for value
@@ -1647,16 +1691,16 @@ debug_attributes(const char *title,	// I - Title
   if (Verbosity <= 1)
     return;
 
-  fprintf(stderr, "%s:\n", title);
+  LOG_INF("%s:\n", title);
   major = ippGetVersion(ipp, &minor);
-  fprintf(stderr, "  version=%d.%d\n", major, minor);
+  LOG_INF("  version=%d.%d\n", major, minor);
   if (type == 1)
-    fprintf(stderr, "  operation-id=%s(%04x)\n",
+    LOG_INF("  operation-id=%s(%04x)\n",
             ippOpString(ippGetOperation(ipp)), ippGetOperation(ipp));
   else if (type == 2)
-    fprintf(stderr, "  status-code=%s(%04x)\n",
+    LOG_INF("  status-code=%s(%04x)\n",
             ippErrorString(ippGetStatusCode(ipp)), ippGetStatusCode(ipp));
-  fprintf(stderr, "  request-id=%d\n\n", ippGetRequestId(ipp));
+  LOG_INF("  request-id=%d\n\n", ippGetRequestId(ipp));
 
   for (attr = ippGetFirstAttribute(ipp), group_tag = IPP_TAG_ZERO;
        attr;
@@ -1665,13 +1709,13 @@ debug_attributes(const char *title,	// I - Title
     if (ippGetGroupTag(attr) != group_tag)
     {
       group_tag = ippGetGroupTag(attr);
-      fprintf(stderr, "  %s\n", ippTagString(group_tag));
+      LOG_INF("  %s\n", ippTagString(group_tag));
     }
 
     if (ippGetName(attr))
     {
       ippAttributeString(attr, buffer, sizeof(buffer));
-      fprintf(stderr, "    %s (%s%s) %s\n", ippGetName(attr),
+      LOG_INF("    %s (%s%s) %s\n", ippGetName(attr),
 	      ippGetCount(attr) > 1 ? "1setOf " : "",
 	      ippTagString(ippGetValueTag(attr)), buffer);
     }
@@ -5265,7 +5309,8 @@ register_printer(
 			formats[252],	// List of supported formats
 			urf[252],	// List of supported URF values
 			*ptr;		// Pointer into string
-
+  LOG_MODULE_DECLARE(libcups);
+  LOG_INF("Registering printer");
 
   if (printer->dnssd_subtypes && !strcmp(printer->dnssd_subtypes, "off"))
     return (true);
@@ -5278,7 +5323,9 @@ register_printer(
   sides_supported           = ippFindAttribute(printer->attrs, "sides-supported", IPP_TAG_KEYWORD);
   urf_supported             = ippFindAttribute(printer->attrs, "urf-supported", IPP_TAG_KEYWORD);
 
+  LOG_INF("Assembling URI");
   httpAssembleURI(HTTP_URI_CODING_ALL, adminurl, sizeof(adminurl), WEB_SCHEME, NULL, printer->hostname, printer->port, "/");
+  LOG_INF("Assembled URI");
 
   for (i = 0, count = ippGetCount(document_format_supported), ptr = formats; i < count; i ++)
   {
@@ -5315,6 +5362,7 @@ register_printer(
   // Rename the service as needed...
   if (printer->dnssd_collision)
   {
+    LOG_INF("dnssd collision");
     char	new_dnssd_name[256];	// New DNS-SD name
     const char	*uuid = ippGetString(printer_uuid, 0, NULL);
 					// "printer-uuid" value
@@ -5332,65 +5380,8 @@ register_printer(
 
     printer->dnssd_collision = 0;
   }
-
-  // Build the TXT record for IPP...
-  num_txt = cupsAddOption("rp", "ipp/print", 0, &txt);
-  if ((value = ippGetString(printer_make_and_model, 0, NULL)) != NULL)
-    num_txt = cupsAddOption("ty", value, num_txt, &txt);
-  num_txt = cupsAddOption("adminurl", adminurl, num_txt, &txt);
-  if ((value = ippGetString(printer_location, 0, NULL)) != NULL)
-    num_txt = cupsAddOption("note", value, num_txt, &txt);
-  num_txt = cupsAddOption("pdl", formats, num_txt, &txt);
-  num_txt = cupsAddOption("Color", ippGetBoolean(color_supported, 0) ? "T" : "F", num_txt, &txt);
-  num_txt = cupsAddOption("Duplex", ippGetCount(sides_supported) > 1 ? "T" : "F", num_txt, &txt);
-  if ((value = ippGetString(printer_uuid, 0, NULL)) != NULL)
-    num_txt = cupsAddOption("UUID", value + 9, num_txt, &txt);
-  num_txt = cupsAddOption("TLS", "1.3", num_txt, &txt);
-  if (urf[0])
-    num_txt = cupsAddOption("URF", urf, num_txt, &txt);
-  num_txt = cupsAddOption("txtvers", "1", num_txt, &txt);
-  num_txt = cupsAddOption("qtotal", "1", num_txt, &txt);
-
-  // Register the _printer._tcp (LPD) service type with a port number of 0 to
-  // defend our service name but not actually support LPD...
-  if_index = !strcmp(printer->hostname, "localhost") ? CUPS_DNSSD_IF_INDEX_LOCAL : CUPS_DNSSD_IF_INDEX_ANY;
-
-  cupsDNSSDServiceDelete(printer->services);
-  if ((printer->services = cupsDNSSDServiceNew(printer->dnssd, if_index, printer->dnssd_name, (cups_dnssd_service_cb_t)dnssd_callback, printer)) == NULL)
-    goto error;
-
-  if (!cupsDNSSDServiceAdd(printer->services, "_printer._tcp", /*domain*/NULL, /*hostname*/NULL, /*port*/0, /*num_txt*/0, /*txt*/NULL))
-    goto error;
-
-  // Then register the _ipp._tcp (IPP) service type with the real port number to
-  // advertise our IPP printer...
-  if (printer->dnssd_subtypes && *(printer->dnssd_subtypes))
-    snprintf(regtype, sizeof(regtype), "_ipp._tcp,%s", printer->dnssd_subtypes);
-  else
-    cupsCopyString(regtype, "_ipp._tcp", sizeof(regtype));
-
-  if (!cupsDNSSDServiceAdd(printer->services, regtype, /*domain*/NULL, /*hostname*/NULL, (uint16_t)printer->port, num_txt, txt))
-    goto error;
-
-  // Then register the _ipps._tcp (IPP) service type with the real port number
-  // to advertise our IPPS printer...
-  if (printer->dnssd_subtypes && *(printer->dnssd_subtypes))
-    snprintf(regtype, sizeof(regtype), "_ipps._tcp,%s", printer->dnssd_subtypes);
-  else
-    cupsCopyString(regtype, "_ipps._tcp", sizeof(regtype));
-
-  if (!cupsDNSSDServiceAdd(printer->services, regtype, /*domain*/NULL, /*hostname*/NULL, (uint16_t)printer->port, num_txt, txt))
-    goto error;
-
-  // Similarly, register the _http._tcp,_printer (HTTP) service type with the
-  // real port number to advertise our IPP printer's web interface...
-  if (!cupsDNSSDServiceAdd(printer->services, "_http._tcp,_printer", /*domain*/NULL, /*hostname*/NULL, (uint16_t)printer->port, num_txt, txt))
-    goto error;
-
   cupsFreeOptions(num_txt, txt);
-
-  // Commit it...
-  return (cupsDNSSDServicePublish(printer->services));
+  return (true);
 
   // If we get here there was a problem...
   error:
@@ -5576,12 +5567,14 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
   int			num_fds;	// Number of file descriptors
   struct pollfd		polldata[3];	// poll() data
   ippeve_client_t	*client;	// New client
-
+  LOG_MODULE_DECLARE(libcups);
 
 #ifndef _WIN32
   // Set signal handlers for SIGINT and SIGTERM...
-  signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler);
+  LOG_INF("setting signals");
+  /* signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler); */
+  LOG_INF("set signals");
 #endif // !_WIN32
 
   // Setup poll() data for the DNS-SD service socket and IPv4/6 listeners...
@@ -5593,22 +5586,28 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
 
   num_fds = 2;
 
+  LOG_INF("Starting loop");
+
   // Loop until we are killed or have a hard error...
   for (;;)
   {
-    if (poll(polldata, (nfds_t)num_fds, 1000) < 0 && errno != EINTR)
+    LOG_INF("Polling");
+    k_sleep(K_MSEC(1000));
+    // if (poll(polldata, (nfds_t)num_fds, 1000) < 0 && errno != EINTR)
+    if (false)
     {
-      perror("poll() failed");
+      LOG_INF("poll() failed");
       break;
     }
-
+    LOG_INF("Poll succeeded");
 #ifndef _WIN32
     if (StopPrinter)
       break;
 #endif // !_WIN32
 
-    if (polldata[0].revents & POLLIN)
+    /* if (polldata[0].revents & POLLIN)
     {
+      LOG_INF("Creating client");
       if ((client = create_client(printer, printer->ipv4)) != NULL)
       {
         cups_thread_t t = cupsThreadCreate((cups_thread_func_t)process_client, client);
@@ -5619,7 +5618,7 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
         }
         else
 	{
-	  perror("Unable to create client thread");
+	  LOG_INF("Unable to create client thread");
 	  delete_client(client);
 	}
       }
@@ -5627,6 +5626,7 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
 
     if (polldata[1].revents & POLLIN)
     {
+      LOG_INF("Creating client (1)");
       if ((client = create_client(printer, printer->ipv6)) != NULL)
       {
         cups_thread_t t = cupsThreadCreate((cups_thread_func_t)process_client, client);
@@ -5637,17 +5637,18 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
         }
         else
 	{
-	  perror("Unable to create client thread");
+	  LOG_INF("Unable to create client thread");
 	  delete_client(client);
 	}
       }
     }
-
+ */
     if (printer->dnssd_collision)
       register_printer(printer);
-
+    
+    LOG_INF("Cleaning out jobs");
     // Clean out old jobs...
-    clean_jobs(printer);
+    // clean_jobs(printer);
   }
 }
 

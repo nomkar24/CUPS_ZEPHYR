@@ -440,7 +440,7 @@ ippeve_main(void *p1)			// I - Command-line arguments
   // Then register the _ipp._tcp (IPP) service type with the real port number to
   // advertise our IPP printer...
 
-  CUPS_DNSSD_SERVICE_REGISTER(ipp_service, "My Example Printer IPP", "_ipp", txt_record, DEFAULT_PORT);
+  // CUPS_DNSSD_SERVICE_REGISTER(ipp_service, "My Example Printer IPP", "_ipp", txt_record, DEFAULT_PORT);
   // Then register the _ipps._tcp (IPP) service type with the real port number
   // to advertise our IPPS printer...
   // CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
@@ -5572,8 +5572,8 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
 #ifndef _WIN32
   // Set signal handlers for SIGINT and SIGTERM...
   LOG_INF("setting signals");
-  /* signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler); */
+  signal(SIGINT, signal_handler);
+  signal(SIGTERM, signal_handler);
   LOG_INF("set signals");
 #endif // !_WIN32
 
@@ -5592,8 +5592,7 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
   for (;;)
   {
     LOG_INF("Polling");
-    k_sleep(K_MSEC(1000));
-    // if (poll(polldata, (nfds_t)num_fds, 1000) < 0 && errno != EINTR)
+    if (poll(polldata, (nfds_t)num_fds, 1000) < 0 && errno != EINTR)
     if (false)
     {
       LOG_INF("poll() failed");
@@ -5605,7 +5604,7 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
       break;
 #endif // !_WIN32
 
-    /* if (polldata[0].revents & POLLIN)
+    if (polldata[0].revents & POLLIN)
     {
       LOG_INF("Creating client");
       if ((client = create_client(printer, printer->ipv4)) != NULL)
@@ -5642,13 +5641,13 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
 	}
       }
     }
- */
+
     if (printer->dnssd_collision)
       register_printer(printer);
     
     LOG_INF("Cleaning out jobs");
     // Clean out old jobs...
-    // clean_jobs(printer);
+    clean_jobs(printer);
   }
 }
 

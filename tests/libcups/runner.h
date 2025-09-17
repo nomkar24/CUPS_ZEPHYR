@@ -32,22 +32,14 @@ void runTest(k_thread_entry_t entry)
 #define MAX_PATH_LEN 255
 #define TEST_FILE_SIZE 547
 
-void *testpthread_set_specific(void *p1)
+void *testpthread_timers(void *p1)
 {
+	ARG_UNUSED(p1);
 	LOG_MODULE_DECLARE(MAIN);
-	LOG_INF("testpthread_set_specific: beginning");
-	pthread_key_t key;
-	void *value = malloc(69);
-	int ret = 1;
-	strcpy(value, "hello world");
-	if (!value)
+	for (;;)
 	{
-		LOG_INF("could not alloc value");
-		return NULL;
+		LOG_INF("testpthread_timers");
+		k_sleep(K_MSEC(1000));
 	}
-	pthread_key_create(&key, NULL);
-	ret = pthread_setspecific(key, value);
-	free(value);
-	LOG_INF("returning %d", ret);
-	return value;
+	return NULL;
 }

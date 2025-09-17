@@ -223,21 +223,33 @@ void service(void)
 
 	static struct sockaddr server_addr;
 
+/* 	static const char txt_record[] = {
+		"\x0c" "rp=ipp/print"
+		"\x27" "ty=ExampleCorp LaserPrinter 4000 Series"
+		"\x1c" "pdl=application/octet-stream"
+		"\x07" "Color=F"
+		"\x08" "Duplex=F"
+		"\x29" "UUID=a85c6a0f-145b-4b0a-97e8-1e8416468b4c"
+		"\x07" "TLS=1.3"
+		"\x09" "txtvers=1"
+		"\x08" "qtotal=1"
+	  }; */
+
 #if DEFAULT_PORT == 0
 	/* The advanced use case: ephemeral port */
 #if defined(CONFIG_NET_IPV6)
 	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
-				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				"_ipp", "_tcp", "local", DNS_SD_EMPTY_TXT,
 				&((struct sockaddr_in6 *)&server_addr)->sin6_port);
 #elif defined(CONFIG_NET_IPV4)
 	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
-				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				"_ipp", "_tcp", "local", DNS_SD_EMPTY_TXT,
 				&((struct sockaddr_in *)&server_addr)->sin_port);
 #endif
 #else
 	/* The simple use case: fixed port */
 	DNS_SD_REGISTER_TCP_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
-				    "_zephyr", "local", DNS_SD_EMPTY_TXT, DEFAULT_PORT);
+				    "_ipp", "local", DNS_SD_EMPTY_TXT, DEFAULT_PORT);
 #endif
 
 	if (IS_ENABLED(CONFIG_NET_IPV6)) {
@@ -458,6 +470,8 @@ int main()
 	int rc;
 	pthread_t top_th;
 	int err;
+	pthread_attr_t attr;
+	void *pthread_stack = NULL;
 
 	LOG_PRINTK("Initializing file system with littlefs\n");
 
@@ -478,6 +492,10 @@ int main()
 		   sbuf.f_bsize, sbuf.f_frsize,
 		   sbuf.f_blocks, sbuf.f_bfree);
 
+	pthread_attr_init(&attr);
+	if ((pthread_stack = malloc(16384)) == NULL)
+		goto out;
+	pthread_attr_setstack(&attr, pthread_stack, 16384);
 	
     net_mgmt_init_event_callback(&wifi_cb, wifi_mgmt_event_handler,
                                 NET_EVENT_WIFI_CONNECT_RESULT |
@@ -493,12 +511,14 @@ int main()
 	wifi_status();
 	k_sem_take(&ipv4_address_obtained, K_FOREVER);
 	printk("Ready...\n\n");
-
+	
 	LOG_INF("Waiting mDNS queries...");
 
-	err = pthread_create(&top_th, NULL, ippeve_main, NULL);
+	service();
+
+	/* err = pthread_create(&top_th, &attr, ippeve_main, NULL);
 	LOG_INF("create pthread error: %d", err);
-	pthread_join(top_th, NULL);
+	pthread_join(top_th, NULL); */
 
 	out:
 	/* rc = fs_unmount(mountpoint);

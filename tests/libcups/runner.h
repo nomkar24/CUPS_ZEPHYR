@@ -43,3 +43,10 @@ void *testpthread_timers(void *p1)
 	}
 	return NULL;
 }
+
+void *testpthread_load_ippserver(void *p1)
+{
+	ARG_UNUSED(p1);
+	load_ippserver_attributes(NULL, 0, "/lfs/test.conf", NULL);
+	return NULL;
+}

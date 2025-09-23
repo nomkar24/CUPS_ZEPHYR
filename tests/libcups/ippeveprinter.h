@@ -22,6 +22,8 @@
 
 #include <limits.h>
 #include <sys/stat.h>
+#include "testconf.h"
+#include <zlib.h>
 
 #ifdef _WIN32
 #  include <fcntl.h>
@@ -72,6 +74,50 @@ extern char **environ;
 #include <zephyr/logging/log.h>
 
 #define DEFAULT_PORT 8000
+
+struct _ipp_file_s			// IPP data file
+{
+  ipp_file_t		*parent;	// Parent data file, if any
+  cups_file_t		*fp;		// File pointer
+  char			*filename,	// Filename
+			mode;		// Read/write mode
+  int			indent,		// Current indentation
+			column,		// Current column
+			linenum,	// Current line number
+			save_line;	// Saved line number
+  off_t			save_pos;	// Saved position
+  ipp_tag_t		group_tag;	// Current group for attributes
+  ipp_t			*attrs;		// Current attributes
+  size_t		num_vars;	// Number of variables
+  cups_option_t		*vars;		// Variables
+  ipp_fattr_cb_t	attr_cb;	// Attribute (filter) callback
+  ipp_ferror_cb_t	error_cb;	// Error reporting callback
+  ipp_ftoken_cb_t	token_cb;	// Token processing callback
+  void			*cb_data;	// Callback data
+  char			*buffer;	// Output buffer
+  size_t		alloc_buffer;	// Size of output buffer
+};
+
+struct _cups_file_s			// CUPS file structure...
+{
+  int		fd;			// File descriptor
+  bool		compressed;		// Compression used?
+  char		mode,			// Mode ('r' or 'w')
+		buf[4096],		// Buffer
+		*ptr,			// Pointer into buffer
+		*end;			// End of buffer data
+  bool		is_stdio,		// stdin/out/err?
+		eof;			// End of file?
+  off_t		pos,			// Position in file
+		bufpos;			// File position for start of buffer
+
+  z_stream	stream;			// (De)compression stream
+  Bytef		cbuf[4096];		// (De)compression buffer
+  uLong		crc;			// (De)compression CRC
+
+  char		*printf_buffer;		// cupsFilePrintf buffer
+  size_t	printf_size;		// Size of cupsFilePrintf buffer
+};
 
 //
 // Constants...
@@ -140,7 +186,7 @@ static const char * const ippeve_preason_strings[] =
 #if HAVE_LIBPAM
 typedef struct ippeve_authdata_s	// Authentication data
 {
-  char	username[HTTP_MAX_VALUE],	// Username string
+  char	username[256],	// Username string
 	*password;			// Password string
 } ippeve_authdata_t;
 #endif // HAVE_LIBPAM
@@ -217,13 +263,11 @@ typedef struct ippeve_client_s		// Client data
   ipp_op_t		operation_id;	// IPP operation-id
   char			uri[1024],	// Request URI
 			*options,	// URI options
-			host_field[HTTP_MAX_VALUE];
-					// Host: header
+			host_field[256];// Host: header
   int			host_port;	// Port number from Host: header
   http_addr_t		addr;		// Client address
   char			hostname[256],	// Client hostname
-			username[HTTP_MAX_VALUE];
-					// Authenticated username, if any
+			username[256];	// Authenticated username, if any
   ippeve_printer_t	*printer;	// Printer
   ippeve_job_t		*job;		// Current job, if any
 } ippeve_client_t;
@@ -275,6 +319,7 @@ static void		ipp_send_document(ippeve_client_t *client);
 static void		ipp_send_uri(ippeve_client_t *client);
 static void		ipp_validate_job(ippeve_client_t *client);
 static ipp_t		*load_ippserver_attributes(const char *servername, int serverport, const char *filename, cups_array_t *docformats);
+static ipp_t		*load_test_attributes(const char *servername, int serverport, const char *teststr, size_t teststr_size, cups_array_t *docformats);
 static ipp_t		*load_legacy_attributes(const char *make, const char *model, int ppm, int ppm_color, int duplex, cups_array_t *docformats);
 #if HAVE_LIBPAM
 static int		pam_func(int, const struct pam_message **, struct pam_response **, void *);
@@ -332,7 +377,7 @@ ippeve_main(void *p1)			// I - Command-line arguments
   char *argv[] = {"ippeveprinter", "My Cool Printer" /*Currently this name does not work with Zephyr's mDNS Responder*/};
   int		i;			// Looping var
   const char	*opt,			// Current option character
-		*attrfile = NULL,	// ippserver attributes file
+		*attrfile = "/lfs/test.conf",	// ippserver attributes file
 		*command = NULL,	// Command to run with job files
 		*device_uri = NULL,	// Device URI
 		*output_format = NULL,	// Output format
@@ -424,26 +469,20 @@ ippeve_main(void *p1)			// I - Command-line arguments
     "\x0c" "rp=ipp/print"
     "\x27" "ty=ExampleCorp LaserPrinter 4000 Series"
     "\x1c" "pdl=application/octet-stream"
-    "\x07" "Color=F"
-    "\x08" "Duplex=F"
-    "\x29" "UUID=a85c6a0f-145b-4b0a-97e8-1e8416468b4c"
-    "\x07" "TLS=1.3"
-    "\x09" "txtvers=1"
-    "\x08" "qtotal=1"
   };
 
 
   // Register the _printer._tcp (LPD) service type with a port number of 0 to
   // defend our service name but not actually support LPD...
-  // CUPS_DNSSD_SERVICE_REGISTER(lpd_service, "My Example Printer", "_ipp", txt_record, 0);
-
+  // CUPS_DNSSD_SERVICE_REGISTER(lpd_service, "My Example Printer IPP", "_ipp", txt_record, 0);
+  
   // Then register the _ipp._tcp (IPP) service type with the real port number to
   // advertise our IPP printer...
+  CUPS_DNSSD_SERVICE_REGISTER(ipp_service, "My Example Printer IPP", "_ipp", txt_record, DEFAULT_PORT);
 
-  // CUPS_DNSSD_SERVICE_REGISTER(ipp_service, "My Example Printer IPP", "_ipp", txt_record, DEFAULT_PORT);
   // Then register the _ipps._tcp (IPP) service type with the real port number
   // to advertise our IPPS printer...
-  // CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
+  CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
 
   // Similarly, register the _http._tcp,_printer (HTTP) service type with the
   // real port number to advertise our IPP printer's web interface...
@@ -1316,6 +1355,7 @@ create_printer(
     "processing",
     "processing-stopped"
   };
+
 
 #ifndef _WIN32
   // If a command was specified, make sure it exists and is executable...
@@ -3614,6 +3654,62 @@ load_ippserver_attributes(
 
 
 //
+// 'load_test_attributes()' - Load IPP attributes for testing.
+//
+
+static ipp_t *				// O - IPP attributes or `NULL` on error
+load_test_attributes(
+    const char   *servername,		// I - Server name or `NULL` for default
+    int          serverport,		// I - Server port number
+    const char   *teststr,		// I - ippserver attribute test buffer
+    size_t teststr_size,     // I - test string size
+    cups_array_t *docformats)		// I - document-format-supported values
+{
+  ipp_file_t	*file;			// IPP data file
+  ipp_t		*attrs;			// IPP attributes
+  char		temp[256];		// Temporary string
+
+
+  (void)docformats; // for now
+
+  // Setup callbacks and variables for the printer configuration file...
+  //
+  // The following additional variables are supported:
+  //
+  // - SERVERNAME: The host name of the server.
+  // - SERVERPORT: The default port of the server.
+  attrs = ippNew();
+  file  = ippFileNew(NULL, (ipp_fattr_cb_t)ippserver_attr_cb, (ipp_ferror_cb_t)ippserver_error_cb, NULL);
+
+  ippFileSetAttributes(file, attrs);
+  ippFileSetGroupTag(file, IPP_TAG_PRINTER);
+
+  if (servername)
+  {
+    ippFileSetVar(file, "SERVERNAME", servername);
+  }
+  else
+  {
+    httpGetHostname(NULL, temp, sizeof(temp));
+    ippFileSetVar(file, "SERVERNAME", temp);
+  }
+
+  snprintf(temp, sizeof(temp), "%d", serverport);
+  ippFileSetVar(file, "SERVERPORT", temp);
+
+  // Load attributes and values for the printer...
+  // ippBufOpen(file, "/lfs/test.conf", "r");
+
+  ippFileRead(file, NULL, false);
+
+  // Free memory and return...
+  ippFileDelete(file);
+
+  return (attrs);
+}
+
+
+//
 // 'load_legacy_attributes()' - Load IPP attributes using the old ippserver
 //                              options.
 //
@@ -5593,7 +5689,6 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
   {
     LOG_INF("Polling");
     if (poll(polldata, (nfds_t)num_fds, 1000) < 0 && errno != EINTR)
-    if (false)
     {
       LOG_INF("poll() failed");
       break;
@@ -5644,7 +5739,7 @@ run_printer(ippeve_printer_t *printer)	// I - Printer
 
     if (printer->dnssd_collision)
       register_printer(printer);
-    
+
     LOG_INF("Cleaning out jobs");
     // Clean out old jobs...
     clean_jobs(printer);

@@ -23,6 +23,9 @@
 #include "net_sample_common.h"
 #include "ippeveprinter.h"
 #include "runner.h"
+#include "ipptest.h"
+#include <zephyr/multi_heap/shared_multi_heap.h>
+#include <zephyr/posix/netinet/in.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_DBG);
 
@@ -207,7 +210,88 @@ void wifi_disconnect(void)
 	}
 }
 
-#if 1
+void service(void)
+{
+	int r;
+	int server_fd;
+	int client_fd;
+	socklen_t len;
+	void *addrp;
+	uint16_t *portp;
+	struct sockaddr client_addr;
+	char addrstr[INET6_ADDRSTRLEN];
+	uint8_t line[64];
+
+	static struct sockaddr server_addr;
+
+#if DEFAULT_PORT == 0
+	/* The advanced use case: ephemeral port */
+#if defined(CONFIG_NET_IPV6)
+	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
+				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				&((struct sockaddr_in6 *)&server_addr)->sin6_port);
+#elif defined(CONFIG_NET_IPV4)
+	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
+				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				&((struct sockaddr_in *)&server_addr)->sin_port);
+#endif
+#else
+	/* The simple use case: fixed port */
+	DNS_SD_REGISTER_TCP_SERVICE(zephyr, "zephyr",
+				    "_http", "local", DNS_SD_EMPTY_TXT, DEFAULT_PORT);
+#endif
+
+	if (IS_ENABLED(CONFIG_NET_IPV6)) {
+		net_sin6(&server_addr)->sin6_family = AF_INET6;
+		net_sin6(&server_addr)->sin6_addr = in6addr_any;
+		net_sin6(&server_addr)->sin6_port = sys_cpu_to_be16(DEFAULT_PORT);
+	} else if (IS_ENABLED(CONFIG_NET_IPV4)) {
+		net_sin(&server_addr)->sin_family = AF_INET;
+		net_sin(&server_addr)->sin_addr.s_addr = htonl(INADDR_ANY);
+		net_sin(&server_addr)->sin_port = sys_cpu_to_be16(DEFAULT_PORT);
+	} else {
+		__ASSERT(false, "Neither IPv6 nor IPv4 are enabled");
+	}
+
+	r = socket(server_addr.sa_family, SOCK_STREAM, 0);
+	if (r == -1) {
+		NET_DBG("socket() failed (%d)", errno);
+		return;
+	}
+
+	server_fd = r;
+	NET_DBG("server_fd is %d", server_fd);
+
+	r = bind(server_fd, &server_addr, sizeof(server_addr));
+	if (r == -1) {
+		NET_DBG("bind() failed (%d)", errno);
+		close(server_fd);
+		return;
+	}
+
+	if (server_addr.sa_family == AF_INET6) {
+		addrp = &net_sin6(&server_addr)->sin6_addr;
+		portp = &net_sin6(&server_addr)->sin6_port;
+	} else {
+		addrp = &net_sin(&server_addr)->sin_addr;
+		portp = &net_sin(&server_addr)->sin_port;
+	}
+
+	inet_ntop(server_addr.sa_family, addrp, addrstr, sizeof(addrstr));
+	NET_DBG("bound to [%s]:%u",
+		addrstr, ntohs(*portp));
+
+	r = listen(server_fd, 1);
+	if (r == -1) {
+		NET_DBG("listen() failed (%d)", errno);
+		close(server_fd);
+		return;
+	}
+
+	
+}
+
+#if 0
 void service(void)
 {
 	int r;
@@ -404,9 +488,8 @@ static int littlefs_mount(struct fs_mount_t *mp)
 }
 #endif /* CONFIG_APP_LITTLEFS_STORAGE_FLASH */
 
-static int load_testconf()
+static int load_file(const char *fname, const void *towrite, size_t len)
 {
-	const char fname[] = "/lfs/test.conf";
 	struct fs_dirent dirent;
 	struct fs_file_t file;
 	int rc, ret;
@@ -444,7 +527,7 @@ static int load_testconf()
 		goto out;
 	}
 
-	rc = fs_write(&file, testconfstr, sizeof(testconfstr));
+	rc = fs_write(&file, towrite, len);
 	if (rc < 0) {
 		LOG_ERR("FAIL: write %s: %d", fname, rc);
 	}
@@ -486,11 +569,6 @@ int main()
 		   mountpoint->mnt_point,
 		   sbuf.f_bsize, sbuf.f_frsize,
 		   sbuf.f_blocks, sbuf.f_bfree);
-
-	pthread_attr_init(&attr);
-	if ((pthread_stack = malloc(32768)) == NULL)
-		goto out;
-	pthread_attr_setstack(&attr, pthread_stack, 32768);
 	
     net_mgmt_init_event_callback(&wifi_cb, wifi_mgmt_event_handler,
                                 NET_EVENT_WIFI_CONNECT_RESULT |
@@ -509,17 +587,140 @@ int main()
 	
 	LOG_INF("Waiting mDNS queries...");
 
-	if (rc = load_testconf())
+	if (rc = load_file("/lfs/test.conf", testconfstr, sizeof(testconfstr)));
 	{
-		LOG_INF("Error with loading test conf to file \"/lfs/test.conf\": %d", rc);
+		LOG_INF("Error with loading test conf to file: %d", rc);
 	}
 
-	LOG_INF("A");
-	
-	err = pthread_create(&top_th, &attr, ippeve_main, NULL);
-	LOG_INF("create pthread error: %d", err);
-	pthread_join(top_th, NULL);
+	if (rc = load_file("/lfs/testipp.test", ippteststr, sizeof(ippteststr)));
+	{
+		LOG_INF("Error with loading testipp.test file: %d", rc);
+	}
 
+	int r;
+	int server_fd;
+	int client_fd;
+	socklen_t len;
+	void *addrp;
+	uint16_t *portp;
+	struct sockaddr client_addr;
+	char addrstr[INET6_ADDRSTRLEN];
+	uint8_t line[64];
+
+	static struct sockaddr server_addr;
+
+#if DEFAULT_PORT == 0
+	/* The advanced use case: ephemeral port */
+#if defined(CONFIG_NET_IPV6)
+	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
+				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				&((struct sockaddr_in6 *)&server_addr)->sin6_port);
+#elif defined(CONFIG_NET_IPV4)
+	DNS_SD_REGISTER_SERVICE(zephyr, CONFIG_NET_HOSTNAME,
+				"_zephyr", "_tcp", "local", DNS_SD_EMPTY_TXT,
+				&((struct sockaddr_in *)&server_addr)->sin_port);
+#endif
+#else
+	/* The simple use case: fixed port */
+	DNS_SD_REGISTER_TCP_SERVICE(zephyr, "zephyr",
+				    "_http", "local", DNS_SD_EMPTY_TXT, DEFAULT_PORT);
+#endif
+
+	if (IS_ENABLED(CONFIG_NET_IPV6)) {
+		net_sin6(&server_addr)->sin6_family = AF_INET6;
+		net_sin6(&server_addr)->sin6_addr = in6addr_any;
+		net_sin6(&server_addr)->sin6_port = sys_cpu_to_be16(DEFAULT_PORT);
+	} else if (IS_ENABLED(CONFIG_NET_IPV4)) {
+		net_sin(&server_addr)->sin_family = AF_INET;
+		net_sin(&server_addr)->sin_addr.s_addr = htonl(INADDR_ANY);
+		net_sin(&server_addr)->sin_port = sys_cpu_to_be16(DEFAULT_PORT);
+	} else {
+		__ASSERT(false, "Neither IPv6 nor IPv4 are enabled");
+	}
+
+	r = socket(server_addr.sa_family, SOCK_STREAM, 0);
+	if (r == -1) {
+		NET_DBG("socket() failed (%d)", errno);
+		return;
+	}
+
+	server_fd = r;
+	NET_DBG("server_fd is %d", server_fd);
+
+	r = bind(server_fd, &server_addr, sizeof(server_addr));
+	if (r == -1) {
+		NET_DBG("bind() failed (%d)", errno);
+		close(server_fd);
+		return;
+	}
+
+	if (server_addr.sa_family == AF_INET6) {
+		addrp = &net_sin6(&server_addr)->sin6_addr;
+		portp = &net_sin6(&server_addr)->sin6_port;
+	} else {
+		addrp = &net_sin(&server_addr)->sin_addr;
+		portp = &net_sin(&server_addr)->sin_port;
+	}
+
+	inet_ntop(server_addr.sa_family, addrp, addrstr, sizeof(addrstr));
+	NET_DBG("bound to [%s]:%u",
+		addrstr, ntohs(*portp));
+
+	r = listen(server_fd, 1);
+	if (r == -1) {
+		NET_DBG("listen() failed (%d)", errno);
+		close(server_fd);
+		return;
+	}
+
+	pthread_attr_init(&attr);
+	if ((pthread_stack = shared_multi_heap_alloc(SMH_REG_ATTR_EXTERNAL, 65536)) == NULL)
+		goto out;
+	pthread_attr_setstack(&attr, pthread_stack, 65536);
+	pthread_attr_setinsmh(&attr);
+	err = pthread_create(&top_th, &attr, testarray_main, NULL);
+	pthread_detach(top_th);
+	LOG_INF("create pthread error: %d", err);
+	for (;;) {
+		len = sizeof(client_addr);
+		r = accept(server_fd, (struct sockaddr *)&client_addr, &len);
+		if (r == -1) {
+			NET_DBG("accept() failed (%d)", errno);
+			continue;
+		}
+
+		client_fd = r;
+
+		inet_ntop(server_addr.sa_family, addrp, addrstr, sizeof(addrstr));
+		NET_DBG("accepted connection from [%s]:%u",
+			addrstr, ntohs(*portp));
+
+		/* send a banner */
+		r = welcome(client_fd);
+		if (r == -1) {
+			NET_DBG("send() failed (%d)", errno);
+			close(client_fd);
+			return;
+		}
+
+		// for (;;) {
+		// 	/* echo 1 line at a time */
+		// 	r = recv(client_fd, line, sizeof(line), 0);
+		// 	if (r == -1) {
+		// 		NET_DBG("recv() failed (%d)", errno);
+		// 		close(client_fd);
+		// 		break;
+		// 	}
+		// 	len = r;
+
+		// 	r = send(client_fd, line, len, 0);
+		// 	if (r == -1) {
+		// 		NET_DBG("send() failed (%d)", errno);
+		// 		close(client_fd);
+		// 		break;
+		// 	}
+		// }
+	}
 	out:
 	rc = fs_unmount(mountpoint);
 	LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc);

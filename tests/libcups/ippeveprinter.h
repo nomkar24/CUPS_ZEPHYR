@@ -482,11 +482,11 @@ ippeve_main(void *p1)			// I - Command-line arguments
 
   // Then register the _ipps._tcp (IPP) service type with the real port number
   // to advertise our IPPS printer...
-  CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
+  // CUPS_DNSSD_SERVICE_REGISTER(ipps_service, "My Example Printer IPPS", "_ipps", txt_record, DEFAULT_PORT);
 
   // Similarly, register the _http._tcp,_printer (HTTP) service type with the
   // real port number to advertise our IPP printer's web interface...
-  // CUPS_DNSSD_SERVICE_REGISTER(http_service, "My Example Printer", "_http", txt_record, DEFAULT_PORT);
+  CUPS_DNSSD_SERVICE_REGISTER(http_service, "My Example Printer", "_http", txt_record, DEFAULT_PORT);
 
   LOG_INF("Setting server credentials");
   cupsSetServerCredentials(keypath, printer->hostname, true);

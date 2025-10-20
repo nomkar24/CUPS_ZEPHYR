@@ -8,3 +8,7 @@
 		status = "okay";
 	};
 };
+
+&psram0 {
+	size = <DT_SIZE_M(8)>;
+};

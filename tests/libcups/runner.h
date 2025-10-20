@@ -12,6 +12,7 @@
 #include <cups/test-internal.h>
 #include <math.h>
 #include <pthread.h>
+#include <cups/thread.h>
 
 #define MAX_STACK_SIZE 1024
 #define THREAD_PRIORITY 7
@@ -44,9 +45,10 @@ void *testpthread_timers(void *p1)
 	return NULL;
 }
 
-void *testpthread_load_ippserver(void *p1)
+void *testpthread_nested_pthread(void *p1)
 {
 	ARG_UNUSED(p1);
-	load_ippserver_attributes(NULL, 0, "/lfs/test.conf", NULL);
+	cups_thread_t t = cupsThreadCreate(testpthread_timers, NULL);
+	cupsThreadWait(t);
 	return NULL;
 }

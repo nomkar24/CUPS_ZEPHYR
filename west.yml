@@ -24,6 +24,10 @@ manifest:
       url: https://github.com/HubertYGuan/libcups
       revision: zephyr
       path: modules/lib/libcups
+    - name: pappl
+      url: https://github.com/HubertYGuan/pappl
+      revision: zephyr
+      path: modules/lib/pappl
 #    - name: mbedtls
 #      url: https://github.com/HubertYGuan/mbedtls
 #      revision: zephyr

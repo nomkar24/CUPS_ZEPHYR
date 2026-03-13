@@ -1,15 +1,16 @@
 manifest:
-
   projects:
     - name: zephyr
       url: https://github.com/HubertYGuan/zephyr
-      revision: mbedtls
+      revision: main
       path: zephyr
       west-commands: scripts/west-commands.yml
       import:
         name-allowlist:
           - cmsis
           - hal_espressif
+          - hal_nordic
+          - nrfxlib
           - littlefs
           - mbedtls
     - name: zlib
@@ -28,10 +29,10 @@ manifest:
       url: https://github.com/HubertYGuan/pappl
       revision: zephyr
       path: modules/lib/pappl
-#    - name: mbedtls
-#      url: https://github.com/HubertYGuan/mbedtls
-#      revision: zephyr
-#      path: modules/lib/mbedtls
+  #    - name: mbedtls
+  #      url: https://github.com/HubertYGuan/mbedtls
+  #      revision: zephyr
+  #      path: modules/lib/mbedtls
 
   self:
     path: module-app

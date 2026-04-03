@@ -1,0 +1,167 @@
+//
+// Base definitions for the Printer Application Framework
+//
+
+#ifndef _PAPPL_BASE_H_
+#  define _PAPPL_BASE_H_
+#  include "config.h"
+#  include <cups/cups.h>
+#  include <cups/raster.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <ctype.h>
+#  include <errno.h>
+#  include <fcntl.h>
+#  include <stdbool.h>
+#  include <sys/stat.h>
+#  include <sys/types.h>
+#  if _WIN32
+#    include <io.h>
+#    include <direct.h>
+typedef int gid_t;
+typedef int uid_t;
+#  elif defined(__zephyr__)
+#    include <zephyr/posix/unistd.h>
+typedef int gid_t;
+typedef int uid_t;
+#  else
+#    include <unistd.h>
+#  endif // _WIN32
+#  ifdef __cplusplus
+extern "C" {
+#  endif // __cplusplus
+
+
+//
+// PAPPL API version definitions...
+//
+
+#  define PAPPL_API_VERSION_MAJOR	2
+#  define PAPPL_API_VERSION_MINOR	0
+
+
+//
+// IPP operations...
+//
+
+#  define PAPPL_IPP_OP_FIND_DEVICES	(ipp_op_t)0x402b
+#  define PAPPL_IPP_OP_FIND_DRIVERS	(ipp_op_t)0x402c
+#  define PAPPL_IPP_OP_CREATE_PRINTERS	(ipp_op_t)0x402d
+
+
+//
+// Visibility and other annotations...
+//
+
+#  if _WIN32
+#    define _PAPPL_DEPRECATED(m)
+#    define _PAPPL_INTERNAL
+#    define _PAPPL_PRIVATE
+#    define _PAPPL_PUBLIC
+#    define _PAPPL_FORMAT(a,b)
+#    define _PAPPL_NONNULL(...)
+#    define _PAPPL_NORETURN
+#  elif defined(__has_extension) || defined(__GNUC__)
+#    define _PAPPL_DEPRECATED(m) __attribute__ ((deprecated(m))) __attribute__ ((visibility("default")))//
+#    define _PAPPL_INTERNAL	__attribute__ ((visibility("hidden")))
+#    define _PAPPL_PRIVATE	__attribute__ ((visibility("default")))//ensures that the function is visible outside the file
+#    define _PAPPL_PUBLIC	__attribute__ ((visibility("default")))
+#    define _PAPPL_FORMAT(a,b)	__attribute__ ((__format__(__printf__, a,b)))
+#    define _PAPPL_NONNULL(...) __attribute__ ((nonnull(__VA_ARGS__)))
+#    define _PAPPL_NORETURN	__attribute__ ((noreturn))
+#  else
+#    define _PAPPL_DEPRECATED(m)
+#    define _PAPPL_INTERNAL
+#    define _PAPPL_PRIVATE
+#    define _PAPPL_PUBLIC
+#    define _PAPPL_FORMAT(a,b)
+#    define _PAPPL_NONNULL(...)
+#    define _PAPPL_NORETURN
+#  endif // __has_extension || __GNUC__
+
+// Common types...
+//
+
+typedef struct _pappl_client_s pappl_client_t;
+					// Client connection object
+typedef struct _pappl_device_s pappl_device_t;
+					// Device connection object
+typedef unsigned char pappl_dither_t[16][16];
+                                        // 16x16 dither array
+typedef struct pappl_pr_driver_data_s pappl_pr_driver_data_t;
+					// Print driver data
+typedef struct _pappl_job_s pappl_job_t;// Job object
+typedef struct _pappl_loc_s pappl_loc_t;// Localization data
+typedef struct pappl_pr_options_s pappl_pr_options_t;
+					// Combined print job options
+typedef unsigned int pappl_preason_t;	// Bitfield for IPP "printer-state-reasons" values
+typedef struct _pappl_printer_s pappl_printer_t;
+					// Printer object
+typedef struct _pappl_subscription_s pappl_subscription_t;
+					// Subscription object
+typedef struct _pappl_system_s pappl_system_t;
+					// System object
+
+
+typedef enum pappl_loptions_e			// Link option bits
+{
+  PAPPL_LOPTIONS_NAVIGATION = 0x0001,		// Link shown in navigation bar
+  PAPPL_LOPTIONS_CONFIGURATION = 0x0002,	// Link shown in configuration section
+  PAPPL_LOPTIONS_JOB = 0x0004,			// Link shown in job(s) section
+  PAPPL_LOPTIONS_LOGGING = 0x0008,		// Link shown in logging section
+  PAPPL_LOPTIONS_NETWORK = 0x0010,		// Link shown in network section
+  PAPPL_LOPTIONS_PRINTER = 0x0020,		// Link shown in printer(s) section
+  PAPPL_LOPTIONS_SECURITY = 0x0040,		// Link shown in security section
+  PAPPL_LOPTIONS_STATUS = 0x0080,		// Link shown in status section
+  PAPPL_LOPTIONS_TLS = 0x0100,			// Link shown in TLS section
+  PAPPL_LOPTIONS_OTHER = 0x0200,		// Link shown in other section
+  PAPPL_LOPTIONS_HTTPS_REQUIRED = 0x8000	// Link requires HTTPS
+};
+typedef unsigned short pappl_loptions_t;// Bitfield for link options
+
+
+typedef enum pappl_supply_color_e	// "printer-supply" color values
+{
+  PAPPL_SUPPLY_NO_COLOR, 			// no colour
+  PAPPL_SUPPLY_COLOR_BLACK,			// Black ink/toner (photo or matte)
+  PAPPL_SUPPLY_COLOR_CYAN,			// Cyan ink/toner
+  PAPPL_SUPPLY_COLOR_MAGENTA, 		//magenta ink 
+  PAPPL_SUPPLY_COLOR_YELLOW,   		//Yellow ink
+  PAPPL_SUPPLY_COLOR_MULTIPLE 		//Multiple colour ink
+} pappl_supply_color_t;
+
+typedef enum pappl_supply_type_e //IPP printer supply type values
+{
+	PAPPL_SUPPLY_TYPE_INK_CARTRIDGE,		// Ink cartridge
+	PAPPL_SUPPLY_TYPE_INK_RIBBON,			// Ink ribbon supply
+	PAPPL_SUPPLY_TYPE_TONER_CARTRIDGE,		// Toner cartridge
+	PAPPL_SUPPLY_TYPE_TONER,			// Toner supply
+	PAPPL_SUPPLY_TYPE_WATER,			// Water supply
+	PAPPL_SUPPLY_TYPE_WASTE_PAPER,		// Waste paper
+	PAPPL_SUPPLY_TYPE_OTHER,			// Other supply
+    PAPPL_SUPPLY_TYPE_UNKNOWN			// Unknown supply
+} pappl_supply_type_t;
+
+typedef struct pappl_supply_s		// Supply data
+{
+  pappl_supply_color_t	color;			// Color, if any
+  char			description[256];	// Description
+  bool			is_consumed;		// Is this a supply that is consumed?
+  int			level;			// Level (0-100, -1 = unknown)
+  pappl_supply_type_t	type;			// Type
+} pappl_supply_t;
+
+//
+// Utility functions...
+//
+
+extern bool		papplCreatePipe(int *fds, bool text) _PAPPL_PUBLIC;
+extern int		papplCreateTempFile(char *fname, size_t fnamesize, const char *prefix, const char *ext) _PAPPL_PUBLIC;
+extern const char	*papplGetTempDir(void) _PAPPL_PUBLIC;
+
+
+#  ifdef __cplusplus
+}
+#  endif // __cplusplus
+#endif // !_PAPPL_BASE_H_

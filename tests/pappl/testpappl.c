@@ -112,11 +112,7 @@ static inline char *win32_realpath(const char *relpath, char *abspath)
 }
 #endif // _WIN32
 
-#define realpath(x, y) y
-#define popen(x, y) NULL
-#define pclose(x) 0
-#define cupsAddDest(x,y,z,w) 0
-#define cupsGetDest(x,y,z,w) NULL
+
 
 
 

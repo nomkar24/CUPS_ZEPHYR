@@ -493,7 +493,7 @@ papplClientRespond(     //stack overflow can happen here for uri[1024]
     time_t         last_modified,	// I - Last-Modified date/time or `0` for none
     size_t         length)		// I - Length of response or `0` for variable-length
 {
-  char	message[1024],			// Text message
+  char	message[1024],			// Text message revieww
 	last_str[256];			// Date string
 
 
@@ -551,7 +551,7 @@ papplClientRespond(     //stack overflow can happen here for uri[1024]
 
   if (code == HTTP_STATUS_UPGRADE_REQUIRED && client->operation == HTTP_STATE_GET)
   {
-    char	redirect[1024];		// Redirect URI
+    char	redirect[1024];		// Redirect URI revieww for overflow
 
     code = HTTP_STATUS_MOVED_PERMANENTLY;
 
@@ -612,7 +612,7 @@ papplClientRespondRedirect(
   if (*path == '/' || !strchr(path, ':'))
   {
     // Generate an absolute URL...
-    char	url[1024];		// Absolute URL
+    char	url[1024];		// Absolute URL review for overflow 
 
     if (*path == '/')
       httpAssembleURI(HTTP_URI_CODING_ALL, url, sizeof(url), httpIsEncrypted(client->http) ? "https" : "http", NULL, client->host_field, client->host_port, path);

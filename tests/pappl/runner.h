@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <cups/thread.h>
 
-#define MAX_STACK_SIZE 1024
+#define MAX_STACK_SIZE 8192
 #define THREAD_PRIORITY 7
 
 K_THREAD_STACK_DEFINE(thread_stack, MAX_STACK_SIZE);

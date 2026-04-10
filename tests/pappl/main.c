@@ -35,73 +35,108 @@ static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
 static struct net_mgmt_event_callback wifi_cb;
 static struct net_mgmt_event_callback ipv4_cb;
 
+/* Work structures for offloading callback processing */
+struct wifi_work_data {
+    struct k_work work;
+    http_status_t status;
+    bool connection_result;
+};
+
+struct ipv4_work_data {
+    struct k_work work;
+    struct net_if *iface;
+};
+
+struct reboot_work_data {
+    struct k_work_delayable work;
+};
+
+static struct wifi_work_data wifi_work;
+static struct ipv4_work_data ipv4_work;
+static struct reboot_work_data reboot_work;
+
+/* Work handler for Wi-Fi connection result logging */
+static void wifi_connect_work_handler(struct k_work *work) {
+    struct wifi_work_data *data = CONTAINER_OF(work, struct wifi_work_data, work);
+
+    if (data->connection_result) {
+        if (data->status) {
+            LOG_INF("Connection request failed (%d)\n", data->status);
+            sys_reboot(SYS_REBOOT_WARM);
+        } else {
+            LOG_INF("Connected\n");
+            k_sem_give(&wifi_connected);
+        }
+    } else {
+        LOG_INF("Disconnected\n");
+    }
+}
+
+/* Work handler for IPv4 address logging and semaphore signaling */
+static void ipv4_work_handler(struct k_work *work) {
+    struct ipv4_work_data *data = CONTAINER_OF(work, struct ipv4_work_data, work);
+    struct net_if *iface = data->iface;
+    int i = 0;
+
+    for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+        char buf[NET_IPV4_ADDR_LEN];
+
+        if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type != NET_ADDR_DHCP) {
+            continue;
+        }
+
+        LOG_INF("IPv4 address: %s\n",
+                net_addr_ntop(AF_INET,
+                              &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+                              buf, sizeof(buf)));
+        LOG_INF("Subnet: %s\n",
+                net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].netmask,
+                              buf, sizeof(buf)));
+        LOG_INF("Router: %s\n", net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw,
+                                              buf, sizeof(buf)));
+    }
+
+    k_sem_give(&ipv4_address_obtained);
+}
+
+/* Work handler for delayed system reboot */
+static void reboot_work_handler(struct k_work *work) {
+    LOG_INF("Executing delayed reboot...\n");
+    sys_reboot(SYS_REBOOT_WARM);
+}
+
 /**
  * @brief Pass callback in to handle status upon connect
- * @param cb: Callback structure
- *
- * Reboots if failed, else gives wifi_connected semaphore
  */
 static void handle_wifi_connect_result(struct net_mgmt_event_callback *cb) {
-  const struct wifi_status *status = (const struct wifi_status *)cb->info;
+    const struct wifi_status *status = (const struct wifi_status *)cb->info;
 
-  if (status->status) {
-    LOG_INF("Connection request failed (%d)\n", status->status);
-    sys_reboot(SYS_REBOOT_WARM);
-  } else {
-    LOG_INF("Connected\n");
-    k_sem_give(&wifi_connected);
-  }
+    wifi_work.connection_result = true;
+    wifi_work.status = status->status;
+    k_work_init(&wifi_work.work, wifi_connect_work_handler);
+    k_work_submit(&wifi_work.work);
 }
 
 /**
  * @brief Pass callback in to handle status upon disconnect
- * @param cb: Callback structure
- *
- * Always reboots
  */
 static void handle_wifi_disconnect_result(struct net_mgmt_event_callback *cb) {
-  const struct wifi_status *status = (const struct wifi_status *)cb->info;
+    wifi_work.connection_result = false;
+    k_work_init(&wifi_work.work, wifi_connect_work_handler);
+    k_work_submit(&wifi_work.work);
 
-  if (status->status) {
-    LOG_INF("Disconnection request (%d)\n", status->status);
-    sys_reboot(SYS_REBOOT_WARM);
-  } else {
-    LOG_INF("Disconnected\n");
-    sys_reboot(SYS_REBOOT_WARM);
-  }
+    /* Delay reboot to allow disconnected log and console flush */
+    k_work_init_delayable(&reboot_work.work, reboot_work_handler);
+    k_work_reschedule(&reboot_work.work, K_MSEC(1000));
 }
 
 /**
  * @brief Checks if IPV4 address has been obtained from DHCP
- * @param iface: Network interface structure
- *
- * Prints obtained address(es), the subnet mask, and router address
- * Also gives the ipv4_address_obtained semaphore
  */
 static void handle_ipv4_result(struct net_if *iface) {
-  int i = 0;
-
-  for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
-
-    char buf[NET_IPV4_ADDR_LEN];
-
-    if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type != NET_ADDR_DHCP) {
-      continue;
-    }
-
-    LOG_INF(
-        "IPv4 address: %s\n",
-        net_addr_ntop(AF_INET,
-                      &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
-                      buf, sizeof(buf)));
-    LOG_INF("Subnet: %s\n",
-            net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].netmask,
-                          buf, sizeof(buf)));
-    LOG_INF("Router: %s\n", net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw,
-                                          buf, sizeof(buf)));
-  }
-
-  k_sem_give(&ipv4_address_obtained);
+    ipv4_work.iface = iface;
+    k_work_init(&ipv4_work.work, ipv4_work_handler);
+    k_work_submit(&ipv4_work.work);
 }
 
 /**
@@ -114,23 +149,23 @@ static void handle_ipv4_result(struct net_if *iface) {
 static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
                                     long long unsigned int mgmt_event,
                                     struct net_if *iface) {
-  switch (mgmt_event) {
+    switch (mgmt_event) {
 
-  case NET_EVENT_WIFI_CONNECT_RESULT:
-    handle_wifi_connect_result(cb);
-    break;
+    case NET_EVENT_WIFI_CONNECT_RESULT:
+        handle_wifi_connect_result(cb);
+        break;
 
-  case NET_EVENT_WIFI_DISCONNECT_RESULT:
-    handle_wifi_disconnect_result(cb);
-    break;
+    case NET_EVENT_WIFI_DISCONNECT_RESULT:
+        handle_wifi_disconnect_result(cb);
+        break;
 
-  case NET_EVENT_IPV4_ADDR_ADD:
-    handle_ipv4_result(iface);
-    break;
+    case NET_EVENT_IPV4_ADDR_ADD:
+        handle_ipv4_result(iface);
+        break;
 
-  default:
-    break;
-  }
+    default:
+        break;
+    }
 }
 
 /**

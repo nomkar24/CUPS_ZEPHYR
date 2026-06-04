@@ -12,3 +12,10 @@
 &psram0 {
 	size = <DT_SIZE_M(8)>;
 };
+
+/* CDC-ACM UART node required by CONFIG_USB_CDC_ACM */
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

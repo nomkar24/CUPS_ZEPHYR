@@ -22,3 +22,5 @@ config APP_LITTLEFS_STORAGE_BLK_SDMMC
 endchoice
 
 source "Kconfig.zephyr"
+
+rsource "../modules/lib/pappl_zephyr/Kconfig"

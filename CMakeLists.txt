@@ -15,8 +15,8 @@ target_sources(app PRIVATE
 target_compile_options(app PRIVATE -U_POSIX_C_SOURCE -D_POSIX_C_SOURCE=200809L)
 
 target_include_directories(app PRIVATE
-    ../modules/lib/pappl
+    ../modules/lib/pappl_zephyr
     ../modules/lib/cups
     ../modules/lib/pdfio
-    tests/pappl              # needed so mainloop.h and testpappl.h can be found
+    
 )

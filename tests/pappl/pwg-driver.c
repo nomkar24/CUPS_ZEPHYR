@@ -9,6 +9,7 @@
 
 #define PWG_DRIVER 1
 #include <pappl/base-private.h>		// For cupsCopyString
+#include <pappl/job-private.h>
 #include "testpappl.h"
 #include <cups/dir.h>
 #include "label-png.h"

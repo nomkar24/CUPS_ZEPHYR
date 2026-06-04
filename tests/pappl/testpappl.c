@@ -58,6 +58,7 @@
 #include <cups/dir.h>
 #include "testpappl.h"
 #include "test.h"
+#include "mainloop.h"   // Zephyr shell hooks
 #include <stdlib.h>
 #include <limits.h>
 
@@ -817,6 +818,11 @@ testpappl_main(void *p1)
 
   // Initialize the system and any printers...
   system = papplSystemCreate(soptions, name ? name : "Test System", port, "_print,_universal", spool, log, level, auth, tls_only);
+
+  // Register the active system so Zephyr Shell commands (USB-CDC) can access it.
+  // Type "pappl status", "pappl printers", etc. in: screen /dev/ttyACM0 115200
+  papplMainloopSetSystem(system);
+
   papplSystemAddListeners(system, NULL);
   papplSystemAddTimerCallback(system, 0, _PAPPL_TIMER_INTERVAL, (pappl_timer_cb_t)timer_cb, &testdata);
   papplSystemSetEventCallback(system, event_cb, (void *)"testpappl");

@@ -48,4 +48,17 @@ pappl_pr_driver_t pwg_drivers[11] =
 extern const char *pwg_autoadd(const char *device_info, const char *device_uri, const char *device_id, void *data);
 extern bool	pwg_callback(pappl_system_t *system, const char *driver_name, const char *device_uri, const char *device_id, pappl_pr_driver_data_t *driver_data, ipp_t **driver_attrs, void *data);
 
+#ifndef F_OK
+#  define F_OK 0
+#endif
+#ifndef X_OK
+#  define X_OK 1
+#endif
+#ifndef W_OK
+#  define W_OK 2
+#endif
+#ifndef R_OK
+#  define R_OK 4
+#endif
+
 #endif // !_TESTPAPPL_H_

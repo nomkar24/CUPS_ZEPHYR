@@ -58,6 +58,11 @@
 #include <cups/dir.h>
 #include "testpappl.h"
 #include "test.h"
+#ifdef __zephyr__
+#  include <zephyr/posix/unistd.h>
+#else
+#  include <unistd.h>
+#endif
 #include "mainloop.h"   // Zephyr shell hooks
 #include <stdlib.h>
 #include <limits.h>
@@ -4419,7 +4424,7 @@ test_infra(pappl_system_t *system)	// I - System
     testEnd(false);
 
   testBegin("infra: papplPrinterSetProxy(ptest pointing to itest)");
-  papplPrinterSetProxy(ptest, /*client_id*/NULL, proxy_device_uuid, proxy_name, /*token_url*/NULL, proxy_uri, proxy_uuid);
+  papplPrinterSetProxy(ptest, /*client_id*/NULL, proxy_name, proxy_device_uuid, /*provider_uri*/NULL, /*token_url*/NULL, proxy_uri, proxy_uuid);
   testEnd(true);
 
   // Connect to system...

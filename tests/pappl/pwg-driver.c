@@ -13,6 +13,11 @@
 #include "testpappl.h"
 #include <cups/dir.h>
 #include "label-png.h"
+#ifdef __zephyr__
+#  include <zephyr/posix/unistd.h>
+#else
+#  include <unistd.h>
+#endif
 
 
 //

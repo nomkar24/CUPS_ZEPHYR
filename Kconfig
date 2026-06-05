@@ -23,4 +23,3 @@ endchoice
 
 source "Kconfig.zephyr"
 
-rsource "../modules/lib/pappl_zephyr/Kconfig"

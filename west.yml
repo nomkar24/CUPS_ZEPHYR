@@ -31,7 +31,7 @@ manifest:
       path: modules/lib/pappl
     - name: pappl_zephyr
       url: https://github.com/nomkar24/pappl_zephyr.git
-      revision: zephyr
+      revision: main
       path: modules/lib/pappl_zephyr
   #    - name: mbedtls
   #      url: https://github.com/HubertYGuan/mbedtls

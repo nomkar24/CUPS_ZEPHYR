@@ -231,7 +231,7 @@ static int	usage(int status);
 void *
 testpappl_main(void *p1)
 {
-  char *argv[] = {"-c", "-L", "debug", "-d", "/lfs/testpappl.spool", "-o", "/lfs/testpappl.output", "--no-tls", "-t", "api,client,pwg-raster,infra,idle-shutdown"};
+  char *argv[] = {"-1", "-c", "-L", "debug", "-d", "/lfs/testpappl.spool", "-o", "/lfs/testpappl.output", "--no-tls", "-p", "631"};
   int argc = sizeof(argv) / sizeof(char *);
   int			i,		// Looping var
 			status = 0;	// Exit status
@@ -791,6 +791,12 @@ testpappl_main(void *p1)
   }
 
   // Clean the log and output directory if necessary
+  if (outdir)
+  {
+    cupsCopyString(outdirname, outdir, sizeof(outdirname));
+    mkdir(outdir, 0777);
+  }
+
   if (clean && log && strcmp(log, "-") && strcmp(log, "syslog"))
     unlink(log);
 
@@ -839,15 +845,13 @@ testpappl_main(void *p1)
                            "Copyright &copy; 2020-2025 by Michael R Sweet. "
                            "Provided under the terms of the <a href=\"https://www.apache.org/licenses/LICENSE-2.0\">Apache License 2.0</a>.");
   papplSystemSetNetworkCallbacks(system, test_network_get_cb, test_network_set_cb, (void *)"testnetwork");
-  papplSystemSetSaveCallback(system, (pappl_save_cb_t)papplSystemSaveState, (void *)"testpappl.state");
+  papplSystemSetSaveCallback(system, (pappl_save_cb_t)papplSystemSaveState, (void *)"/lfs/testpappl.state");
   papplSystemSetVersions(system, (int)(sizeof(versions) / sizeof(versions[0])), versions);
   papplSystemAddStringsData(system, "/en.strings", "en", "\"/\" = \"This is a localized header for the system home page.\";\n\"/network\" = \"This is a localized header for the network configuration page.\";\n\"/printing\" = \"This is a localized header for all printing defaults pages.\";\n\"/Label_Printer/printing\" = \"This is a localized header for the label printer defaults page.\";\n");
 
-  mkdir(outdir, 0777);
+  httpAssembleURIf(HTTP_URI_CODING_ALL, output_device_uri, sizeof(output_device_uri), "file", NULL, NULL, 0, "%s?ext=pwg", outdir);
 
-  httpAssembleURIf(HTTP_URI_CODING_ALL, output_device_uri, sizeof(output_device_uri), "file", NULL, NULL, 0, "%s?ext=pwg", realpath(outdir, outdirname));
-
-  if (clean || !papplSystemLoadState(system, "testpappl.state"))
+  if (clean || !papplSystemLoadState(system, "/lfs/testpappl.state"))
   {
     papplSystemSetContact(system, &contact);
     papplSystemSetDNSSDName(system, name ? name : "Test System");
@@ -876,7 +880,7 @@ testpappl_main(void *p1)
     }
     else
     {
-      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8", "MFG:PWG;MDL:Office Printer;", output_device_uri);
+      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8-pdf", "MFG:PWG;MDL:Office Printer;", output_device_uri);
       papplPrinterSetContact(printer, &contact);
       papplPrinterSetDNSSDName(printer, "Office Printer");
       papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");

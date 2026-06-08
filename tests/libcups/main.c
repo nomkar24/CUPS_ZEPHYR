@@ -101,12 +101,13 @@ static void handle_ipv4_result(struct net_if *iface) {
 
     char buf[NET_IPV4_ADDR_LEN];
 
-    if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type != NET_ADDR_DHCP) {
+    if (!iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
       continue;
     }
 
     LOG_INF(
-        "IPv4 address: %s\n",
+        "IPv4 address (%s): %s\n",
+        iface->config.ip.ipv4->unicast[i].ipv4.addr_type == NET_ADDR_DHCP ? "DHCP" : "Static",
         net_addr_ntop(AF_INET,
                       &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
                       buf, sizeof(buf)));

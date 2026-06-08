@@ -27,7 +27,7 @@ LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_DBG);
 
 extern void *testpappl_main(void *p1);
 
-#define MAIN_STACK_SIZE (2 * 1024 * 1024)
+#define MAIN_STACK_SIZE (256 * 1024)
 
 static K_SEM_DEFINE(wifi_connected, 0, 1);
 static K_SEM_DEFINE(ipv4_address_obtained, 0, 1);
@@ -37,18 +37,18 @@ static struct net_mgmt_event_callback ipv4_cb;
 
 /* Work structures for offloading callback processing */
 struct wifi_work_data {
-    struct k_work work;
-    http_status_t status;
-    bool connection_result;
+  struct k_work work;
+  http_status_t status;
+  bool connection_result;
 };
 
 struct ipv4_work_data {
-    struct k_work work;
-    struct net_if *iface;
+  struct k_work work;
+  struct net_if *iface;
 };
 
 struct reboot_work_data {
-    struct k_work_delayable work;
+  struct k_work_delayable work;
 };
 
 static struct wifi_work_data wifi_work;
@@ -57,86 +57,91 @@ static struct reboot_work_data reboot_work;
 
 /* Work handler for Wi-Fi connection result logging */
 static void wifi_connect_work_handler(struct k_work *work) {
-    struct wifi_work_data *data = CONTAINER_OF(work, struct wifi_work_data, work);
+  struct wifi_work_data *data = CONTAINER_OF(work, struct wifi_work_data, work);
 
-    if (data->connection_result) {
-        if (data->status) {
-            LOG_INF("Connection request failed (%d)\n", data->status);
-            sys_reboot(SYS_REBOOT_WARM);
-        } else {
-            LOG_INF("Connected\n");
-            k_sem_give(&wifi_connected);
-        }
+  if (data->connection_result) {
+    if (data->status) {
+      LOG_INF("Connection request failed (%d)\n", data->status);
+      /* Avoid reboot loop */
+      /* sys_reboot(SYS_REBOOT_WARM); */
     } else {
-        LOG_INF("Disconnected\n");
+      LOG_INF("Connected\n");
+      k_sem_give(&wifi_connected);
     }
+  } else {
+    LOG_INF("Disconnected\n");
+  }
 }
 
 /* Work handler for IPv4 address logging and semaphore signaling */
 static void ipv4_work_handler(struct k_work *work) {
-    struct ipv4_work_data *data = CONTAINER_OF(work, struct ipv4_work_data, work);
-    struct net_if *iface = data->iface;
-    int i = 0;
+  struct ipv4_work_data *data = CONTAINER_OF(work, struct ipv4_work_data, work);
+  struct net_if *iface = data->iface;
+  int i = 0;
 
-    for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
-        char buf[NET_IPV4_ADDR_LEN];
+  for (i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+    char buf[NET_IPV4_ADDR_LEN];
 
-        if (iface->config.ip.ipv4->unicast[i].ipv4.addr_type != NET_ADDR_DHCP) {
-            continue;
-        }
-
-        LOG_INF("IPv4 address: %s\n",
-                net_addr_ntop(AF_INET,
-                              &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
-                              buf, sizeof(buf)));
-        LOG_INF("Subnet: %s\n",
-                net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].netmask,
-                              buf, sizeof(buf)));
-        LOG_INF("Router: %s\n", net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw,
-                                              buf, sizeof(buf)));
+    if (!iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
+      continue;
     }
 
-    k_sem_give(&ipv4_address_obtained);
+    LOG_INF(
+        "IPv4 address (%s): %s\n",
+        iface->config.ip.ipv4->unicast[i].ipv4.addr_type == NET_ADDR_DHCP
+            ? "DHCP"
+            : "Static",
+        net_addr_ntop(AF_INET,
+                      &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+                      buf, sizeof(buf)));
+    LOG_INF("Subnet: %s\n",
+            net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[i].netmask,
+                          buf, sizeof(buf)));
+    LOG_INF("Router: %s\n", net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw,
+                                          buf, sizeof(buf)));
+  }
+
+  k_sem_give(&ipv4_address_obtained);
 }
 
 /* Work handler for delayed system reboot */
 static void reboot_work_handler(struct k_work *work) {
-    LOG_INF("Executing delayed reboot...\n");
-    sys_reboot(SYS_REBOOT_WARM);
+  LOG_INF("Executing delayed reboot...\n");
+  sys_reboot(SYS_REBOOT_WARM);
 }
 
 /**
  * @brief Pass callback in to handle status upon connect
  */
 static void handle_wifi_connect_result(struct net_mgmt_event_callback *cb) {
-    const struct wifi_status *status = (const struct wifi_status *)cb->info;
+  const struct wifi_status *status = (const struct wifi_status *)cb->info;
 
-    wifi_work.connection_result = true;
-    wifi_work.status = status->status;
-    k_work_init(&wifi_work.work, wifi_connect_work_handler);
-    k_work_submit(&wifi_work.work);
+  wifi_work.connection_result = true;
+  wifi_work.status = status->status;
+  k_work_init(&wifi_work.work, wifi_connect_work_handler);
+  k_work_submit(&wifi_work.work);
 }
 
 /**
  * @brief Pass callback in to handle status upon disconnect
  */
 static void handle_wifi_disconnect_result(struct net_mgmt_event_callback *cb) {
-    wifi_work.connection_result = false;
-    k_work_init(&wifi_work.work, wifi_connect_work_handler);
-    k_work_submit(&wifi_work.work);
+  wifi_work.connection_result = false;
+  k_work_init(&wifi_work.work, wifi_connect_work_handler);
+  k_work_submit(&wifi_work.work);
 
-    /* Delay reboot to allow disconnected log and console flush */
-    k_work_init_delayable(&reboot_work.work, reboot_work_handler);
-    k_work_reschedule(&reboot_work.work, K_MSEC(1000));
+  /* Avoid reboot loop on disconnect */
+  /* k_work_init_delayable(&reboot_work.work, reboot_work_handler);
+  k_work_reschedule(&reboot_work.work, K_MSEC(1000)); */
 }
 
 /**
  * @brief Checks if IPV4 address has been obtained from DHCP
  */
 static void handle_ipv4_result(struct net_if *iface) {
-    ipv4_work.iface = iface;
-    k_work_init(&ipv4_work.work, ipv4_work_handler);
-    k_work_submit(&ipv4_work.work);
+  ipv4_work.iface = iface;
+  k_work_init(&ipv4_work.work, ipv4_work_handler);
+  k_work_submit(&ipv4_work.work);
 }
 
 /**
@@ -149,23 +154,23 @@ static void handle_ipv4_result(struct net_if *iface) {
 static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
                                     long long unsigned int mgmt_event,
                                     struct net_if *iface) {
-    switch (mgmt_event) {
+  switch (mgmt_event) {
 
-    case NET_EVENT_WIFI_CONNECT_RESULT:
-        handle_wifi_connect_result(cb);
-        break;
+  case NET_EVENT_WIFI_CONNECT_RESULT:
+    handle_wifi_connect_result(cb);
+    break;
 
-    case NET_EVENT_WIFI_DISCONNECT_RESULT:
-        handle_wifi_disconnect_result(cb);
-        break;
+  case NET_EVENT_WIFI_DISCONNECT_RESULT:
+    handle_wifi_disconnect_result(cb);
+    break;
 
-    case NET_EVENT_IPV4_ADDR_ADD:
-        handle_ipv4_result(iface);
-        break;
+  case NET_EVENT_IPV4_ADDR_ADD:
+    handle_ipv4_result(iface);
+    break;
 
-    default:
-        break;
-    }
+  default:
+    break;
+  }
 }
 
 /**
@@ -181,9 +186,9 @@ void wifi_connect(void) {
   wifi_params.ssid = SSID;
   wifi_params.ssid_length = strlen(SSID);
   wifi_params.channel = WIFI_CHANNEL_ANY;
-  wifi_params.security = WIFI_SECURITY_TYPE_NONE;
-  /*     wifi_params.psk = PSK;
-      wifi_params.psk_length = strlen(PSK); */
+  wifi_params.security = WIFI_SECURITY_TYPE_PSK;
+  wifi_params.psk = PSK;
+  wifi_params.psk_length = strlen(PSK);
   wifi_params.band = WIFI_FREQ_BAND_2_4_GHZ;
   wifi_params.mfp = WIFI_MFP_OPTIONAL;
 
@@ -192,7 +197,8 @@ void wifi_connect(void) {
   if (net_mgmt(NET_REQUEST_WIFI_CONNECT, iface, &wifi_params,
                sizeof(struct wifi_connect_req_params))) {
     LOG_INF("WiFi Connection Request Failed\n");
-    sys_reboot(SYS_REBOOT_WARM);
+    /* Avoid reboot loop */
+    /* sys_reboot(SYS_REBOOT_WARM); */
   } else {
     LOG_INF("Connected successfully\n");
   }
@@ -477,6 +483,37 @@ out:
   return (rc < 0 ? rc : 0);
 }
 
+static struct k_work_delayable ip_timer_work;
+
+static void ip_timer_handler(struct k_work *work) {
+  struct net_if *iface = net_if_get_default();
+  if (iface && iface->config.ip.ipv4) {
+    bool has_ip = false;
+    for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+      if (iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
+        char buf[NET_IPV4_ADDR_LEN];
+        LOG_INF("Periodic check - IPv4 address (%s): %s",
+                iface->config.ip.ipv4->unicast[i].ipv4.addr_type ==
+                        NET_ADDR_DHCP
+                    ? "DHCP"
+                    : "Static",
+                net_addr_ntop(
+                    AF_INET,
+                    &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+                    buf, sizeof(buf)));
+        has_ip = true;
+      }
+    }
+    if (!has_ip) {
+      LOG_INF("Periodic check - No IPv4 address assigned yet.");
+    }
+  } else {
+    LOG_INF(
+        "Periodic check - No default network interface or IPv4 config found.");
+  }
+  k_work_reschedule(&ip_timer_work, K_MSEC(10000));
+}
+
 int main() {
   struct fs_statvfs sbuf;
   int rc;
@@ -513,23 +550,53 @@ int main() {
   net_mgmt_add_event_callback(&wifi_cb);
   net_mgmt_add_event_callback(&ipv4_cb);
 
-  wifi_connect();
-  k_sem_take(&wifi_connected, K_FOREVER);
+  k_work_init_delayable(&ip_timer_work, ip_timer_handler);
+  k_work_reschedule(&ip_timer_work, K_MSEC(1000));
+
+  while (1) {
+    wifi_connect();
+    if (k_sem_take(&wifi_connected, K_MSEC(10000)) == 0) {
+      break;
+    }
+    LOG_WRN("WiFi connection timed out or failed. Retrying in 10 seconds...");
+  }
   wifi_status();
+
+  // Check if an IP address is already assigned (e.g. static IP) to avoid
+  // hanging
+  struct net_if *iface = net_if_get_default();
+  if (iface && iface->config.ip.ipv4) {
+    for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
+      if (iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
+        char buf[NET_IPV4_ADDR_LEN];
+        LOG_INF("IP address already present on interface: %s",
+                net_addr_ntop(
+                    AF_INET,
+                    &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+                    buf, sizeof(buf)));
+        k_sem_give(&ipv4_address_obtained);
+        break;
+      }
+    }
+  }
+
   k_sem_take(&ipv4_address_obtained, K_FOREVER);
   printk("Ready...\n\n");
 
   pthread_attr_init(&attr);
-  // if ((pthread_stack = shared_multi_heap_alloc(SMH_REG_ATTR_EXTERNAL,
-  // MAIN_STACK_SIZE)) == NULL)
-  //	goto out;
-  // pthread_attr_setstack(&attr, pthread_stack, MAIN_STACK_SIZE);
-  // pthread_attr_setinsmh(&attr);
+  pthread_stack =
+      shared_multi_heap_alloc(SMH_REG_ATTR_EXTERNAL, MAIN_STACK_SIZE);
+  if (pthread_stack == NULL) {
+    LOG_ERR("Failed to allocate stack memory");
+    goto out;
+  }
+  pthread_attr_setstack(&attr, pthread_stack, MAIN_STACK_SIZE);
+  pthread_attr_setinsmh(&attr, true);
   err = pthread_create(&top_th, &attr, testpappl_main, NULL);
   pthread_detach(top_th);
   LOG_INF("create pthread error: %d", err);
-  for (;;) {
-  }
+
+  k_sleep(K_FOREVER);
 out:
   rc = fs_unmount(mountpoint);
   LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc);

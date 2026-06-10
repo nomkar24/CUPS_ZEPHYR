@@ -5070,7 +5070,7 @@ timer_cb(pappl_system_t    *system,	// I - System
 
   data->timer_count ++;
 
-  papplLog(system, PAPPL_LOGLEVEL_DEBUG, "timer_cb: count=%d", data->timer_count);
+  // papplLog(system, PAPPL_LOGLEVEL_DEBUG, "timer_cb: count=%d", data->timer_count);
 
   return (data->timer_count < _PAPPL_MAX_TIMER_COUNT);
 }

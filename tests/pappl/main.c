@@ -491,25 +491,15 @@ static void ip_timer_handler(struct k_work *work) {
     bool has_ip = false;
     for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
       if (iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
-        char buf[NET_IPV4_ADDR_LEN];
-        LOG_INF("Periodic check - IPv4 address (%s): %s",
-                iface->config.ip.ipv4->unicast[i].ipv4.addr_type ==
-                        NET_ADDR_DHCP
-                    ? "DHCP"
-                    : "Static",
-                net_addr_ntop(
-                    AF_INET,
-                    &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
-                    buf, sizeof(buf)));
         has_ip = true;
       }
     }
     if (!has_ip) {
-      LOG_INF("Periodic check - No IPv4 address assigned yet.");
+      // LOG_INF("Periodic check - No IPv4 address assigned yet.");
     }
   } else {
-    LOG_INF(
-        "Periodic check - No default network interface or IPv4 config found.");
+    // LOG_INF(
+    //     "Periodic check - No default network interface or IPv4 config found.");
   }
   k_work_reschedule(&ip_timer_work, K_MSEC(10000));
 }

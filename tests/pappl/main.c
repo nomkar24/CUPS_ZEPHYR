@@ -1,7 +1,6 @@
 #include "net_sample_common.h"
 #include "runner.h"
 #include "wifi_config.h"
-#include "esp_wifi.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -572,19 +571,6 @@ int main() {
   }
 
   k_sem_take(&ipv4_address_obtained, K_FOREVER);
-
-  /* Disable Wi-Fi modem-sleep power save. The ESP32 SLP timer callbacks race
-   * with active TCP connections in the Wi-Fi task: when the modem-sleep timer
-   * fires during concurrent IPP/socket traffic, timer_remove() can see
-   * le_prev==NULL and crash (EXCCAUSE 29, store prohibited). WIFI_PS_NONE
-   * prevents those timers from ever being armed. */
-  esp_err_t ps_err = esp_wifi_set_ps(WIFI_PS_NONE);
-  if (ps_err != ESP_OK) {
-    LOG_WRN("esp_wifi_set_ps(WIFI_PS_NONE) failed: %d", ps_err);
-  } else {
-    LOG_INF("Wi-Fi power save disabled (WIFI_PS_NONE)");
-  }
-
   printk("Ready...\n\n");
 
   pthread_attr_init(&attr);

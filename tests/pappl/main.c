@@ -23,6 +23,7 @@
 #include <zephyr/posix/netinet/in.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/sys/sys_heap.h>
 LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_DBG);
 
 extern void *testpappl_main(void *p1);
@@ -487,21 +488,35 @@ static struct k_work_delayable ip_timer_work;
 
 static void ip_timer_handler(struct k_work *work) {
   struct net_if *iface = net_if_get_default();
+  bool printed = false;
+
   if (iface && iface->config.ip.ipv4) {
-    bool has_ip = false;
     for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
       if (iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
-        has_ip = true;
+        char buf[NET_IPV4_ADDR_LEN];
+        net_addr_ntop(AF_INET,
+                      &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
+                      buf, sizeof(buf));
+        printk("[Network] IP Address: %s\n", buf);
+#ifdef CONFIG_SYS_HEAP_RUNTIME_STATS
+        extern struct k_heap _system_heap;
+        struct sys_memory_stats heap_stats;
+        if (sys_heap_runtime_stats_get(&_system_heap.heap, &heap_stats) == 0) {
+          printk("[System] Heap stats - Allocated: %zu B, Free: %zu B, Peak: %zu B\n",
+                 heap_stats.allocated_bytes, heap_stats.free_bytes, heap_stats.max_allocated_bytes);
+        }
+#endif
+        printed = true;
+        break;
       }
     }
-    if (!has_ip) {
-      // LOG_INF("Periodic check - No IPv4 address assigned yet.");
-    }
-  } else {
-    // LOG_INF(
-    //     "Periodic check - No default network interface or IPv4 config found.");
   }
-  k_work_reschedule(&ip_timer_work, K_MSEC(10000));
+
+  if (printed) {
+    k_work_reschedule(&ip_timer_work, K_MSEC(30000));
+  } else {
+    k_work_reschedule(&ip_timer_work, K_MSEC(2000));
+  }
 }
 
 int main() {

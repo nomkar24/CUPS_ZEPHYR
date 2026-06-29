@@ -224,6 +224,56 @@ static bool	timer_cb(pappl_system_t *system, _pappl_testdata_t *data);
 static int	usage(int status);
 
 
+#ifdef __zephyr__
+#include <zephyr/kernel.h>
+
+static K_THREAD_STACK_DEFINE(save_thread_stack, 16384);
+static struct k_thread save_thread_data;
+static struct k_sem save_sem;
+static bool save_sem_inited = false;
+static bool save_result = false;
+
+static void save_thread_entry(void *p1, void *p2, void *p3)
+{
+  pappl_system_t *system = (pappl_system_t *)p1;
+  const char *filename = (const char *)p2;
+  (void)p3;
+
+  printk("[pappl] save_thread_entry starting for file: %s...\n", filename);
+  save_result = papplSystemSaveState(system, filename);
+  printk("[pappl] save_thread_entry finished with status: %d\n", save_result);
+
+  k_sem_give(&save_sem);
+}
+
+static bool safe_save_callback(
+    pappl_system_t *system,
+    void           *data)
+{
+  const char *filename = (const char *)data;
+
+  printk("[pappl] safe_save_callback called (filename='%s') from thread %p\n", filename, (void *)k_current_get());
+
+  if (!save_sem_inited)
+  {
+    k_sem_init(&save_sem, 0, 1);
+    save_sem_inited = true;
+  }
+
+  // Create a helper thread in internal SRAM (DRAM) with high priority
+  k_thread_create(&save_thread_data, save_thread_stack,
+                  K_THREAD_STACK_SIZEOF(save_thread_stack),
+                  save_thread_entry, system, (void *)filename, NULL,
+                  K_PRIO_PREEMPT(1), 0, K_NO_WAIT);
+
+  // Block the calling thread (which is using PSRAM stack) until saving completes
+  k_sem_take(&save_sem, K_FOREVER);
+  printk("[pappl] safe_save_callback returning to client thread: status=%d\n", save_result);
+  return (save_result);
+}
+#endif // __zephyr__
+
+
 //
 // 'main()' - Main entry for test suite.
 //
@@ -845,7 +895,11 @@ testpappl_main(void *p1)
                            "Copyright &copy; 2020-2025 by Michael R Sweet. "
                            "Provided under the terms of the <a href=\"https://www.apache.org/licenses/LICENSE-2.0\">Apache License 2.0</a>.");
   papplSystemSetNetworkCallbacks(system, test_network_get_cb, test_network_set_cb, (void *)"testnetwork");
+#ifdef __zephyr__
+  papplSystemSetSaveCallback(system, (pappl_save_cb_t)safe_save_callback, (void *)"/lfs/testpappl.state");
+#else
   papplSystemSetSaveCallback(system, (pappl_save_cb_t)papplSystemSaveState, (void *)"/lfs/testpappl.state");
+#endif
   papplSystemSetVersions(system, (int)(sizeof(versions) / sizeof(versions[0])), versions);
   papplSystemAddStringsData(system, "/en.strings", "en", "\"/\" = \"This is a localized header for the system home page.\";\n\"/network\" = \"This is a localized header for the network configuration page.\";\n\"/printing\" = \"This is a localized header for all printing defaults pages.\";\n\"/Label_Printer/printing\" = \"This is a localized header for the label printer defaults page.\";\n");
 

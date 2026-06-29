@@ -274,6 +274,26 @@ static bool safe_save_callback(
 #endif // __zephyr__
 
 
+static void cleanup_directory(const char *path)
+{
+  cups_dir_t *dir;
+  cups_dentry_t *dent;
+  char filename[1024];
+
+  if ((dir = cupsDirOpen(path)) != NULL)
+  {
+    while ((dent = cupsDirRead(dir)) != NULL)
+    {
+      if (dent->filename[0] == '.')
+        continue;
+      snprintf(filename, sizeof(filename), "%s/%s", path, dent->filename);
+      unlink(filename);
+    }
+    cupsDirClose(dir);
+  }
+}
+
+
 //
 // 'main()' - Main entry for test suite.
 //
@@ -281,6 +301,9 @@ static bool safe_save_callback(
 void *
 testpappl_main(void *p1)
 {
+  cleanup_directory("/lfs/testpappl.spool");
+  cleanup_directory("/lfs/testpappl.output");
+
   char *argv[] = {"-1", "-c", "-L", "debug", "-d", "/lfs/testpappl.spool", "-o", "/lfs/testpappl.output", "--no-tls", "-p", "631"};
   int argc = sizeof(argv) / sizeof(char *);
   int			i,		// Looping var
@@ -930,6 +953,7 @@ testpappl_main(void *p1)
 	papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");
 	papplPrinterSetLocation(printer, "Test Lab 42");
 	papplPrinterSetOrganization(printer, "Lakeside Robotics");
+	papplPrinterSetMaxPreservedJobs(printer, 1);
       }
     }
     else
@@ -940,7 +964,7 @@ testpappl_main(void *p1)
       papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");
       papplPrinterSetLocation(printer, "Test Lab 42");
       papplPrinterSetOrganization(printer, "Lakeside Robotics");
-      papplPrinterSetMaxPreservedJobs(printer, 3);
+      papplPrinterSetMaxPreservedJobs(printer, 1);
 
       if (soptions & PAPPL_SOPTIONS_USB_PRINTER)
         papplPrinterSetUSB(printer, usb_vendor_id, usb_product_id, usb_options, usb_storagefile, /*usb_cb*/NULL, /*usb_data*/NULL);
@@ -953,6 +977,7 @@ testpappl_main(void *p1)
 	// Not setting geo-location for label printer to ensure that DNS-SD works without a LOC record...
 	papplPrinterSetLocation(printer, "Test Lab 42");
 	papplPrinterSetOrganization(printer, "Lakeside Robotics");
+	papplPrinterSetMaxPreservedJobs(printer, 1);
       }
     }
   }

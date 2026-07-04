@@ -1,4 +1,3 @@
-#include "net_sample_common.h"
 #include "runner.h"
 #include "wifi_config.h"
 #include <errno.h>

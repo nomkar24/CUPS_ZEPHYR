@@ -9,7 +9,6 @@ target_sources(app PRIVATE
     tests/pappl/main.c
     tests/pappl/testpappl.c
     tests/pappl/pwg-driver.c
-    tests/pappl/net_sample_common.c
     tests/pappl/heap_wrap.c
 )
 

@@ -567,24 +567,6 @@ int main() {
   }
   wifi_status();
 
-  // Check if an IP address is already assigned (e.g. static IP) to avoid
-  // hanging
-  struct net_if *iface = net_if_get_default();
-  if (iface && iface->config.ip.ipv4) {
-    for (int i = 0; i < NET_IF_MAX_IPV4_ADDR; i++) {
-      if (iface->config.ip.ipv4->unicast[i].ipv4.is_used) {
-        char buf[NET_IPV4_ADDR_LEN];
-        LOG_INF("IP address already present on interface: %s",
-                net_addr_ntop(
-                    AF_INET,
-                    &iface->config.ip.ipv4->unicast[i].ipv4.address.in_addr,
-                    buf, sizeof(buf)));
-        k_sem_give(&ipv4_address_obtained);
-        break;
-      }
-    }
-  }
-
   k_sem_take(&ipv4_address_obtained, K_FOREVER);
   printk("Ready...\n\n");
 

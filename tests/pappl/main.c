@@ -527,7 +527,7 @@ int main() {
   pthread_attr_t attr;
   void *pthread_stack = NULL;
 
-  LOG_PRINTK("Initializing file system with littlefs\n");
+  LOG_INF("Initializing file system with littlefs");
 
   rc = littlefs_mount(mountpoint);
   if (rc < 0) {
@@ -536,12 +536,11 @@ int main() {
 
   rc = fs_statvfs(mountpoint->mnt_point, &sbuf);
   if (rc < 0) {
-    LOG_PRINTK("FAIL: statvfs: %d\n", rc);
+    LOG_ERR("FAIL: statvfs: %d", rc);
     goto out;
   }
 
-  LOG_PRINTK("%s: bsize = %lu ; frsize = %lu ;"
-             " blocks = %lu ; bfree = %lu\n",
+  LOG_INF("%s: bsize = %lu ; frsize = %lu ; blocks = %lu ; bfree = %lu",
              mountpoint->mnt_point, sbuf.f_bsize, sbuf.f_frsize, sbuf.f_blocks,
              sbuf.f_bfree);
 
@@ -560,10 +559,10 @@ int main() {
 
   while (1) {
     wifi_connect();
-    if (k_sem_take(&wifi_connected, K_MSEC(10000)) == 0) {
+    if (k_sem_take(&wifi_connected, K_MSEC(2000)) == 0) {
       break;
     }
-    LOG_WRN("WiFi connection timed out or failed. Retrying in 10 seconds...");
+    LOG_WRN("WiFi connection timed out or failed. Retrying in 2 seconds...");
   }
   wifi_status();
 
@@ -586,6 +585,6 @@ int main() {
   k_sleep(K_FOREVER);
 out:
   rc = fs_unmount(mountpoint);
-  LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc);
+  LOG_INF("%s unmount: %d", mountpoint->mnt_point, rc);
   return 0;
 }

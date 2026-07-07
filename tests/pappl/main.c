@@ -23,6 +23,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/sys_heap.h>
+#include <zephyr/shell/shell.h>
 LOG_MODULE_REGISTER(MAIN, LOG_LEVEL_DBG);
 
 extern void *testpappl_main(void *p1);
@@ -587,3 +588,45 @@ out:
   LOG_INF("%s unmount: %d", mountpoint->mnt_point, rc);
   return 0;
 }
+
+static int cmd_heap_stats(const struct shell *sh, size_t argc, char **argv)
+{
+	struct sys_heap **heaps;
+	int count = sys_heap_array_get(&heaps);
+	if (count <= 0) {
+		shell_print(sh, "No heaps registered.");
+		return 0;
+	}
+
+	if (argc > 1 && strcmp(argv[1], "dump") == 0) {
+		if (argc < 3) {
+			shell_print(sh, "Usage: heap_stats dump <index>");
+			return -EINVAL;
+		}
+		int idx = atoi(argv[2]);
+		if (idx < 0 || idx >= count) {
+			shell_print(sh, "Invalid heap index %d (range 0 to %d)", idx, count - 1);
+			return -EINVAL;
+		}
+		shell_print(sh, "Dumping heap %d chunk layout:", idx);
+		sys_heap_print_info(heaps[idx], true);
+		return 0;
+	}
+
+	shell_print(sh, "Found %d registered heaps:", count);
+	for (int i = 0; i < count; i++) {
+		struct sys_heap *h = heaps[i];
+		struct sys_memory_stats stats;
+		shell_print(sh, "Heap %d (address: %p, size: %zu bytes):", i, h->init_mem, h->init_bytes);
+		if (sys_heap_runtime_stats_get(h, &stats) == 0) {
+			shell_print(sh, "  Allocated: %zu B", stats.allocated_bytes);
+			shell_print(sh, "  Free:      %zu B", stats.free_bytes);
+			shell_print(sh, "  Peak:      %zu B", stats.max_allocated_bytes);
+		} else {
+			shell_print(sh, "  Could not retrieve runtime stats (ensure CONFIG_SYS_HEAP_RUNTIME_STATS=y is set).");
+		}
+	}
+	return 0;
+}
+
+SHELL_CMD_REGISTER(heap_stats, NULL, "Print heap runtime stats and dump layout", cmd_heap_stats);

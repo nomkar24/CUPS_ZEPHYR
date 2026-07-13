@@ -22,7 +22,7 @@ manifest:
       revision: zephyr
       path: modules/lib/pdfio
     - name: libcups
-      url: https://github.com/HubertYGuan/libcups
+      url: https://github.com/nomkar24/libcups_zephyr.git
       revision: zephyr
       path: modules/lib/libcups
     - name: pappl

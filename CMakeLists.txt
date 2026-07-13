@@ -12,7 +12,7 @@ target_sources(app PRIVATE
     tests/pappl/heap_wrap.c
 )
 
-target_compile_options(app PRIVATE -U_POSIX_C_SOURCE -D_POSIX_C_SOURCE=200809L)
+zephyr_compile_options(-U_POSIX_C_SOURCE -D_POSIX_C_SOURCE=200809L)
 
 target_include_directories(app PRIVATE
     ../modules/lib/pappl_zephyr
@@ -20,9 +20,14 @@ target_include_directories(app PRIVATE
     ../modules/lib/pdfio
 )
 
-target_link_options(app PRIVATE
+zephyr_link_libraries(
     -Wl,--wrap=shared_multi_heap_alloc
     -Wl,--wrap=shared_multi_heap_aligned_alloc
     -Wl,--wrap=shared_multi_heap_realloc
     -Wl,--wrap=shared_multi_heap_free
+    -Wl,--wrap=strcmp
+    -Wl,--wrap=strlen
+    -Wl,--wrap=strcpy
+    -Wl,--wrap=strncmp
+    -Wl,--wrap=strchr
 )

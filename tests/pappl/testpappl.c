@@ -954,17 +954,19 @@ testpappl_main(void *p1)
 	papplPrinterSetLocation(printer, "Test Lab 42");
 	papplPrinterSetOrganization(printer, "Lakeside Robotics");
 	papplPrinterSetMaxPreservedJobs(printer, 1);
+	papplPrinterHoldNewJobs(printer);
       }
     }
     else
     {
-      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8-pdf", "MFG:PWG;MDL:Office Printer;", output_device_uri);
+      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8", "MFG:PWG;MDL:Office Printer;", output_device_uri);
       papplPrinterSetContact(printer, &contact);
       papplPrinterSetDNSSDName(printer, "Office Printer");
       papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");
       papplPrinterSetLocation(printer, "Test Lab 42");
       papplPrinterSetOrganization(printer, "Lakeside Robotics");
       papplPrinterSetMaxPreservedJobs(printer, 1);
+      papplPrinterHoldNewJobs(printer);
 
       if (soptions & PAPPL_SOPTIONS_USB_PRINTER)
         papplPrinterSetUSB(printer, usb_vendor_id, usb_product_id, usb_options, usb_storagefile, /*usb_cb*/NULL, /*usb_data*/NULL);
@@ -978,6 +980,7 @@ testpappl_main(void *p1)
 	papplPrinterSetLocation(printer, "Test Lab 42");
 	papplPrinterSetOrganization(printer, "Lakeside Robotics");
 	papplPrinterSetMaxPreservedJobs(printer, 1);
+	papplPrinterHoldNewJobs(printer);
       }
     }
   }

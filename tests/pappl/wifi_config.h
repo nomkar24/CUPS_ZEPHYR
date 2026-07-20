@@ -1,7 +1,7 @@
 #ifndef WIFI_CONFIG_H
 #define WIFI_CONFIG_H
 
-#define SSID "delta_virus"
-#define PSK "66380115"
+#define SSID "Tenda_89EE20"
+#define PSK ""
 
 #endif /* WIFI_CONFIG_H */

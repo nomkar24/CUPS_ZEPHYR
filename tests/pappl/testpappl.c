@@ -959,7 +959,7 @@ testpappl_main(void *p1)
     }
     else
     {
-      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8", "MFG:PWG;MDL:Office Printer;", output_device_uri);
+      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8-pdf", "MFG:PWG;MDL:Office Printer;", output_device_uri);
       papplPrinterSetContact(printer, &contact);
       papplPrinterSetDNSSDName(printer, "Office Printer");
       papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");

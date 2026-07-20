@@ -187,9 +187,13 @@ void wifi_connect(void) {
   wifi_params.ssid = SSID;
   wifi_params.ssid_length = strlen(SSID);
   wifi_params.channel = WIFI_CHANNEL_ANY;
-  wifi_params.security = WIFI_SECURITY_TYPE_PSK;
-  wifi_params.psk = PSK;
-  wifi_params.psk_length = strlen(PSK);
+  if (PSK && strlen(PSK) > 0) {
+    wifi_params.security = WIFI_SECURITY_TYPE_PSK;
+    wifi_params.psk = PSK;
+    wifi_params.psk_length = strlen(PSK);
+  } else {
+    wifi_params.security = WIFI_SECURITY_TYPE_NONE;
+  }
   wifi_params.band = WIFI_FREQ_BAND_2_4_GHZ;
   wifi_params.mfp = WIFI_MFP_OPTIONAL;
 

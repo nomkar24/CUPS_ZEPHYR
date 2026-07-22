@@ -194,7 +194,7 @@ pwg_callback(
   driver_data->rwriteline_cb      = pwg_rwriteline;
   driver_data->status_cb          = pwg_status;
   driver_data->testpage_cb        = pwg_testpage;
-  driver_data->format             = "image/pwg-raster";
+  driver_data->format             = "image/urf";
   driver_data->orient_default     = IPP_ORIENT_NONE;
   driver_data->quality_default    = IPP_QUALITY_NORMAL;
 
@@ -618,13 +618,15 @@ pwg_rstartjob(
 {
   pwg_job_data_t *pwg = (pwg_job_data_t *)calloc(1, sizeof(pwg_job_data_t));
 					// PWG driver data
+  pappl_pr_driver_data_t data;
 
 
   (void)options;
 
   papplJobSetData(job, pwg);
 
-  pwg->ras = cupsRasterOpenIO((cups_raster_cb_t)papplDeviceWrite, device, CUPS_RASTER_WRITE_PWG);
+  papplPrinterGetDriverData(papplJobGetPrinter(job), &data);
+  pwg->ras = cupsRasterOpenIO((cups_raster_cb_t)papplDeviceWrite, device, !strcmp(data.format, "image/urf") ? CUPS_RASTER_WRITE_APPLE : CUPS_RASTER_WRITE_PWG);
 
   papplLogJob(job, PAPPL_LOGLEVEL_DEBUG, "PWG start job");
 

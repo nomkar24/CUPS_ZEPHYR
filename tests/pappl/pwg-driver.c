@@ -482,7 +482,11 @@ pwg_print(
 
   (void)options;
 
-  papplJobSetImpressions(job, 1);
+  int impressions = papplJobGetImpressions(job);
+  if (impressions <= 0)
+    impressions = 1;
+
+  papplJobSetImpressions(job, impressions);
 
   if ((fd  = open(papplJobGetDocumentFilename(job, doc_number), O_RDONLY)) < 0)
   {
@@ -495,7 +499,7 @@ pwg_print(
 
   close(fd);
 
-  papplJobSetImpressionsCompleted(job, 1);
+  papplJobSetImpressionsCompleted(job, impressions);
 
   return (true);
 }

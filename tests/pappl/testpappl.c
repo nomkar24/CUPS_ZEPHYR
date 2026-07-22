@@ -294,6 +294,15 @@ static void cleanup_directory(const char *path)
 }
 
 
+static void hold_printer_cb(pappl_printer_t *printer, void *data)
+{
+  (void)data;
+  printk("[pappl] hold_printer_cb: printer='%s', hold_new_jobs was %d\n", papplPrinterGetName(printer), papplPrinterIsHoldingNewJobs(printer));
+  papplPrinterHoldNewJobs(printer);
+  printk("[pappl] hold_printer_cb: printer='%s', hold_new_jobs is now %d\n", papplPrinterGetName(printer), papplPrinterIsHoldingNewJobs(printer));
+}
+
+
 //
 // 'main()' - Main entry for test suite.
 //
@@ -926,7 +935,7 @@ testpappl_main(void *p1)
   papplSystemSetVersions(system, (int)(sizeof(versions) / sizeof(versions[0])), versions);
   papplSystemAddStringsData(system, "/en.strings", "en", "\"/\" = \"This is a localized header for the system home page.\";\n\"/network\" = \"This is a localized header for the network configuration page.\";\n\"/printing\" = \"This is a localized header for all printing defaults pages.\";\n\"/Label_Printer/printing\" = \"This is a localized header for the label printer defaults page.\";\n");
 
-  httpAssembleURIf(HTTP_URI_CODING_ALL, output_device_uri, sizeof(output_device_uri), "file", NULL, NULL, 0, "%s?ext=pwg", outdir);
+  cupsCopyString(output_device_uri, "ipp://192.168.0.124:631/ipp/print", sizeof(output_device_uri));
 
   if (clean || !papplSystemLoadState(system, "/lfs/testpappl.state"))
   {
@@ -959,7 +968,7 @@ testpappl_main(void *p1)
     }
     else
     {
-      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8-pdf", "MFG:PWG;MDL:Office Printer;", output_device_uri);
+      printer = papplPrinterCreate(system, /* printer_id */0, "Office Printer", "pwg_common-300dpi-600dpi-srgb_8", "MFG:PWG;MDL:Office Printer;", output_device_uri);
       papplPrinterSetContact(printer, &contact);
       papplPrinterSetDNSSDName(printer, "Office Printer");
       papplPrinterSetGeoLocation(printer, "geo:46.4707,-80.9961");
@@ -984,6 +993,8 @@ testpappl_main(void *p1)
       }
     }
   }
+
+  papplSystemIteratePrinters(system, hold_printer_cb, NULL);
 
   // Run any test(s)...
   if (cupsArrayGetCount(testdata.names))

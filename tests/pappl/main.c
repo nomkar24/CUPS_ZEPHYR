@@ -523,6 +523,104 @@ static void ip_timer_handler(struct k_work *work) {
   }
 }
 
+#ifdef CONFIG_SOC_SERIES_ESP32S3
+#include <usb/usb_host.h>
+
+__thread struct k_sem *current_thread_sem = NULL;
+
+#include <esp_err.h>
+esp_err_t gpio_set_drive_capability(int gpio_num, int strength) {
+    return ESP_OK;
+}
+
+static K_THREAD_STACK_DEFINE(usb_lib_stack, 4096);
+static struct k_thread usb_lib_thread;
+static K_THREAD_STACK_DEFINE(usb_client_stack, 4096);
+static struct k_thread usb_client_thread;
+
+static usb_host_client_handle_t client_hdl = NULL;
+
+static void client_event_cb(const usb_host_client_event_msg_t *event_msg, void *arg) {
+    if (event_msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) {
+        printk("\n====================================\n");
+        printk("[usb_host] CALLBACK: USB Printer Connected! (Addr: %d)\n", event_msg->new_dev.address);
+        printk("====================================\n\n");
+        usb_device_handle_t dev_hdl;
+        if (usb_host_device_open(client_hdl, event_msg->new_dev.address, &dev_hdl) == ESP_OK) {
+            printk("[usb_host] Successfully opened USB printer device.\n");
+        }
+    } else if (event_msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
+        printk("\n====================================\n");
+        printk("[usb_host] CALLBACK: USB Printer Disconnected!\n");
+        printk("====================================\n\n");
+    }
+}
+
+static void usb_host_lib_daemon_task(void *p1, void *p2, void *p3) {
+    ARG_UNUSED(p1); ARG_UNUSED(p2); ARG_UNUSED(p3);
+    printk("[usb_host] Starting USB Host library daemon task...\n");
+    while (1) {
+        uint32_t event_flags;
+        usb_host_lib_handle_events(portMAX_DELAY, &event_flags);
+        if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
+            usb_host_device_free_all();
+        }
+        k_msleep(10);
+    }
+}
+
+static void usb_client_task(void *p1, void *p2, void *p3) {
+    ARG_UNUSED(p1); ARG_UNUSED(p2); ARG_UNUSED(p3);
+    printk("[usb_host] Starting USB client event task...\n");
+    while (1) {
+        if (client_hdl) {
+            usb_host_client_handle_events(client_hdl, portMAX_DELAY);
+        }
+        k_msleep(10);
+    }
+}
+
+void init_usb_host_detect(void) {
+    printk("[usb_host] Initializing USB Host stack...\n");
+
+    usb_host_config_t host_config = {
+        .skip_phy_setup = false,
+        .intr_flags = 0,
+    };
+    esp_err_t err = usb_host_install(&host_config);
+    if (err != ESP_OK) {
+        printk("[usb_host] Failed to install USB Host library: %d\n", err);
+        return;
+    }
+
+    usb_host_client_config_t client_config = {
+        .is_synchronous = false,
+        .max_num_event_msg = 5,
+        .async = {
+            .client_event_callback = client_event_cb,
+            .callback_arg = NULL,
+        }
+    };
+    err = usb_host_client_register(&client_config, &client_hdl);
+    if (err != ESP_OK) {
+        printk("[usb_host] Failed to register client: %d\n", err);
+        return;
+    }
+
+    k_thread_create(&usb_lib_thread, usb_lib_stack,
+                    K_THREAD_STACK_SIZEOF(usb_lib_stack),
+                    usb_host_lib_daemon_task, NULL, NULL, NULL,
+                    K_LOWEST_APPLICATION_THREAD_PRIO, 0, K_NO_WAIT);
+
+    k_thread_create(&usb_client_thread, usb_client_stack,
+                    K_THREAD_STACK_SIZEOF(usb_client_stack),
+                    usb_client_task, NULL, NULL, NULL,
+                    K_LOWEST_APPLICATION_THREAD_PRIO, 0, K_NO_WAIT);
+
+    printk("[usb_host] USB Host stack successfully initialized and started.\n");
+}
+#endif
+
 int main() {
   struct fs_statvfs sbuf;
   int rc;
@@ -585,6 +683,11 @@ int main() {
   err = pthread_create(&top_th, &attr, testpappl_main, NULL);
   pthread_detach(top_th);
   LOG_INF("create pthread error: %d", err);
+
+#ifdef CONFIG_SOC_SERIES_ESP32S3
+  extern void init_usb_host_detect(void);
+  init_usb_host_detect();
+#endif
 
   k_sleep(K_FOREVER);
 out:

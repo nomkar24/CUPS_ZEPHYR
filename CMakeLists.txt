@@ -10,6 +10,17 @@ target_sources(app PRIVATE
     tests/pappl/testpappl.c
     tests/pappl/pwg-driver.c
     tests/pappl/heap_wrap.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/hal/usb_dwc_hal.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/hal/usb_wrap_hal.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/hal/usb_serial_jtag_hal.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/soc/esp32s3/usb_dwc_periph.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/hcd_dwc.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/hub.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/usb_helpers.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/usb_host.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/usb_private.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/usbh.c
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/usb_phy.c
 )
 
 zephyr_compile_options(-U_POSIX_C_SOURCE -D_POSIX_C_SOURCE=200809L)
@@ -18,6 +29,9 @@ target_include_directories(app PRIVATE
     ../modules/lib/pappl_zephyr
     ../modules/lib/cups
     ../modules/lib/pdfio
+    /Users/omkar/Desktop/CUPS_ZEPHYR/include
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/include
+    /Users/omkar/Desktop/modules/hal/espressif/components/usb/private_include
 )
 
 zephyr_link_libraries(

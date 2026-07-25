@@ -2,7 +2,7 @@
 #define WIFI_CONFIG_H
 
 
-#define SSID "Tenda_89EE20"
-#define PSK "66380115"
+#define SSID "yuhanli"
+#define PSK ""
 
 #endif /* WIFI_CONFIG_H */

@@ -538,21 +538,52 @@ static struct k_thread usb_lib_thread;
 static K_THREAD_STACK_DEFINE(usb_client_stack, 4096);
 static struct k_thread usb_client_thread;
 
-static usb_host_client_handle_t client_hdl = NULL;
+usb_host_client_handle_t client_hdl = NULL;
+uint8_t active_usb_addr = 0;
 
 static void client_event_cb(const usb_host_client_event_msg_t *event_msg, void *arg) {
     if (event_msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) {
-        printk("\n====================================\n");
         printk("[usb_host] CALLBACK: USB Printer Connected! (Addr: %d)\n", event_msg->new_dev.address);
-        printk("====================================\n\n");
+        active_usb_addr = event_msg->new_dev.address;
         usb_device_handle_t dev_hdl;
         if (usb_host_device_open(client_hdl, event_msg->new_dev.address, &dev_hdl) == ESP_OK) {
             printk("[usb_host] Successfully opened USB printer device.\n");
+
+            const usb_device_desc_t *device_desc;
+            if (usb_host_get_device_descriptor(dev_hdl, &device_desc) == ESP_OK) {
+                printk("[usb_host] Device Descriptor: Vendor ID: 0x%04X, Product ID: 0x%04X\n", 
+                       device_desc->idVendor, device_desc->idProduct);
+            }
+
+            const usb_config_desc_t *config_desc;
+            if (usb_host_get_active_config_descriptor(dev_hdl, &config_desc) == ESP_OK) {
+                printk("[usb_host] Configuration Descriptor: Total Length: %d, Num Interfaces: %d\n", 
+                       config_desc->wTotalLength, config_desc->bNumInterfaces);
+
+                const usb_standard_desc_t *desc = (const usb_standard_desc_t *)config_desc;
+                int offset = 0;
+                while (desc != NULL) {
+                    desc = usb_parse_next_descriptor(desc, config_desc->wTotalLength, &offset);
+                    if (desc == NULL) break;
+                    if (desc->bDescriptorType == USB_B_DESCRIPTOR_TYPE_INTERFACE) {
+                        const usb_intf_desc_t *intf = (const usb_intf_desc_t *)desc;
+                        printk("[usb_host] Interface %d: Class: 0x%02X, SubClass: 0x%02X, Protocol: 0x%02X\n",
+                               intf->bInterfaceNumber, intf->bInterfaceClass, intf->bInterfaceSubClass, intf->bInterfaceProtocol);
+                        if (intf->bInterfaceClass == 0x07 && intf->bInterfaceSubClass == 0x01) {
+                            if (intf->bInterfaceProtocol == 0x04) {
+                                printk("[usb_host] >>> SUCCESS: Printer supports IPP-over-USB (Protocol 0x04)!\n");
+                            } else {
+                                printk("[usb_host] >>> Printer supports standard USB print protocol (Protocol 0x%02X).\n", intf->bInterfaceProtocol);
+                            }
+                        }
+                    }
+                }
+            }
+            usb_host_device_close(client_hdl, dev_hdl);
         }
     } else if (event_msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
-        printk("\n====================================\n");
+        active_usb_addr = 0;
         printk("[usb_host] CALLBACK: USB Printer Disconnected!\n");
-        printk("====================================\n\n");
     }
 }
 

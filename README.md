@@ -9,7 +9,7 @@
 
 # Zephyr CUPS and PAPPL Print Server
 
-This repository contains an embedded print server implementation running on Zephyr RTOS. It integrates CUPS (Common UNIX Printing System) and PAPPL (Printer Application Framework) specifically for Espressif systems.
+This repository contains an embedded print server implementation running on Zephyr RTOS. It integrates CUPS (Common UNIX Printing System) and PAPPL (Printer Application Framework) specifically for the ESP32-S3.
 
 **Note**: This project is exclusively supported on the ESP32-S3. Standard ESP32 microcontrollers are unsupported due to the requirement of a native USB OTG controller (DWC OTG) for printer communication and the high RAM footprint requiring external PSRAM/SPIRAM.
 
@@ -25,7 +25,7 @@ The print server acts as a bridge between network clients and physical USB print
 
 * **Zephyr RTOS Integration**: Built as a standard Zephyr application utilizing Kconfig and the CMake build system.
 * **Apple Raster and PWG Raster Support**: Processes uncompressed Apple Raster (image/urf) and PWG Raster streams. The system disables direct PDF rendering to force rasterization on the client device (macOS or iOS), reducing RAM and CPU utilization on the microcontroller.
-* **USB Host Stack**: Queries configuration and interface descriptors of connected USB printers using Espressif's native USB host driver wrapper.
+* **USB Host Stack**: Queries configuration and interface descriptors of connected USB printers using the native ESP32-S3 USB Host driver wrapper.
 * **Network Discovery**: Automatically advertises IPP printing services on the local network via mDNS and DNS-SD over Wi-Fi.
 * **External Heap Allocation**: Utilizes SPIRAM/PSRAM to allocate the large buffers required for print queues and raster image streams.
 

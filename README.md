@@ -24,6 +24,10 @@ The print server acts as a bridge between network clients and physical USB print
 * **Firmware Stack**: The incoming print stream is processed by the ESP32-S3 firmware, which links the `libcups` (CUPS API), `pappl_zephyr` (PAPPL print framework), and `zlib` (decompression engine) modules.
 * **Printer Interface**: The processed raster print job is written directly to the physical printer using the ESP32-S3 native USB Host controller (DWC OTG driver).
 
+## Documentation
+
+For a detailed technical analysis, system design, and evaluation reports, see the [GSOC26 Documentation](./GSOC26_Documentation.pdf) file in this repository.
+
 ## Features
 
 * **Zephyr RTOS Integration**: Built as a standard Zephyr application utilizing Kconfig and the CMake build system.
@@ -84,14 +88,6 @@ west build -b esp32s3_devkitc_procpu
 west flash
 ```
 
-## Technical Overview
-
-### Print Pipeline
-The application uses the `pwg_common-300dpi-600dpi-srgb_8` driver profile. This profile signals client devices to perform local rendering. The client transmits the pre-rasterized data stream via the Internet Printing Protocol (IPP), and the print server pipes it directly to the printer over USB with minimal internal buffering.
-
-### Heap Wrapper and POSIX Shims
-Because CUPS and PAPPL require POSIX threading and dynamic allocations, the build system wraps memory management functions (such as `shared_multi_heap_alloc`) and maps standard POSIX APIs to Zephyr's POSIX subsystem.
-
 ## Acknowledgements
 
 This project integrates and builds upon several open-source libraries:
@@ -101,3 +97,7 @@ This project integrates and builds upon several open-source libraries:
 * **[OpenPrinting CUPS](https://github.com/openprinting/cups)**: The Common UNIX Printing System libraries.
 * **[pdfio](https://github.com/michaelrsweet/pdfio)**: The PDF processing library developed by Michael R Sweet.
 * **[zlib](https://github.com/madler/zlib)**: The compression library developed by Jean-loup Gailly and Mark Adler.
+
+## License
+
+This project is licensed under the Apache License 2.0.

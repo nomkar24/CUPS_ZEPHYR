@@ -1,1 +1,3 @@
 *wifi_config.h
+build/
+.cache/

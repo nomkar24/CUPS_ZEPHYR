@@ -1,6 +1,6 @@
 <p align="left">
-  <img src="./logo-readme-dark.svg" alt="Zephyr Logo" height="120" style="vertical-align: middle; margin-right: 25px;" />
-  <img src="./image-1.png" alt="Print Server Logo" height="120" style="vertical-align: middle;" />
+  <img src="./logo_2.svg" alt="Zephyr Logo" height="120" style="vertical-align: middle; margin-right: 25px;" />
+  <img src="./logo_1.png" alt="Print Server Logo" height="120" style="vertical-align: middle;" />
 </p>
 
 <p align="left">

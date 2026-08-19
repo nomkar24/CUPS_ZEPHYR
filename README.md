@@ -1,8 +1,8 @@
-![alt text](image-1.png)
+![Print Server Logo](./image-1.png)
 
 <p align="left">
-  <a href="https://www.zephyrproject.org/"><img src="https://img.shields.io/badge/Zephyr_RTOS-3.x-blue?style=flat-square" alt="Zephyr RTOS"></a>
-  <img src="https://img.shields.io/badge/Hardware-ESP32--S3_Only-red?style=flat-square" alt="Hardware Support">
+  <a href="https://www.zephyrproject.org/"><img src="https://img.shields.io/badge/Zephyr_RTOS-3.x-blue?style=flat-square&logo=zephyr&logoColor=white" alt="Zephyr RTOS"></a>
+  <img src="https://img.shields.io/badge/Hardware-ESP32--S3_Only-red?style=flat-square&logo=espressif&logoColor=white" alt="Hardware Support">
   <img src="https://img.shields.io/badge/Language-C-green?style=flat-square" alt="Language">
   <img src="https://img.shields.io/badge/License-Apache_2.0-lightgrey?style=flat-square" alt="License">
 </p>
@@ -15,20 +15,11 @@ This repository contains an embedded print server implementation running on Zeph
 
 ## System Architecture
 
-The following diagram illustrates the network and hardware interface mapping of the print server:
+The print server acts as a bridge between network clients and physical USB printers:
 
-```mermaid
-graph TD
-    Client["Client Device (macOS / iOS)"] -- "IPP over Wi-Fi" --> ESP32["ESP32-S3 Print Server"]
-    ESP32 -- "USB Host DWC OTG Driver" --> Printer["Physical USB Printer"]
-    
-    subgraph ESP32-S3 Firmware
-        ESP32
-        CUPS["libcups Module"]
-        PAPPL["pappl_zephyr Module"]
-        ZLIB["zlib Module"]
-    end
-```
+* **Network Client Interface**: macOS, iOS, or other network clients discover the print server over Wi-Fi via mDNS/DNS-SD. Print jobs are sent using the Internet Printing Protocol (IPP).
+* **Firmware Stack**: The incoming print stream is processed by the ESP32-S3 firmware, which links the `libcups` (CUPS API), `pappl_zephyr` (PAPPL print framework), and `zlib` (decompression engine) modules.
+* **Printer Interface**: The processed raster print job is written directly to the physical printer using the ESP32-S3 native USB Host controller (DWC OTG driver).
 
 ## Features
 
@@ -52,13 +43,13 @@ graph TD
 
 The project workspace is managed using West and retrieves the following dependencies:
 
-| Dependency | Fork Repository | Role |
+| Dependency | Repository | Role |
 | :--- | :--- | :--- |
-| Zephyr RTOS | `HubertYGuan/zephyr` | Underlying RTOS kernel and drivers |
-| zlib | `nomkar24/zlib` | Data decompression for print streams |
-| pdfio | `nomkar24/pdfio` | PDF processing utility engine |
-| libcups | `nomkar24/libcups_zephyr` | Core CUPS client and printer shims |
-| pappl_zephyr | `nomkar24/pappl_zephyr` | Ported PAPPL framework interface |
+| Zephyr RTOS | [`zephyrproject-rtos/zephyr`](https://github.com/zephyrproject-rtos/zephyr) | Underlying RTOS kernel and drivers |
+| zlib | [`nomkar24/zlib`](https://github.com/nomkar24/zlib) | Data decompression for print streams |
+| pdfio | [`nomkar24/pdfio`](https://github.com/nomkar24/pdfio) | PDF processing utility engine |
+| libcups | [`nomkar24/libcups_zephyr`](https://github.com/nomkar24/libcups_zephyr) | Core CUPS client and printer shims |
+| pappl_zephyr | [`nomkar24/pappl_zephyr`](https://github.com/nomkar24/pappl_zephyr) | Ported PAPPL framework interface |
 
 ## Getting Started
 

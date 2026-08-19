@@ -97,7 +97,7 @@ Because CUPS and PAPPL require POSIX threading and dynamic allocations, the buil
 This project integrates and builds upon several open-source libraries:
 
 * **[Zephyr Project](https://github.com/zephyrproject-rtos/zephyr)**: The real-time operating system kernel.
-* **[OpenPrinting PAPPL](https://github.com/openprinting/pappl)**: The Printer Application Framework developed by Michael R Sweet.
+* **[PAPPL](https://github.com/michaelrsweet/pappl)**: The Printer Application Framework developed by Michael R Sweet.
 * **[OpenPrinting CUPS](https://github.com/openprinting/cups)**: The Common UNIX Printing System libraries.
 * **[pdfio](https://github.com/michaelrsweet/pdfio)**: The PDF processing library developed by Michael R Sweet.
 * **[zlib](https://github.com/madler/zlib)**: The compression library developed by Jean-loup Gailly and Mark Adler.

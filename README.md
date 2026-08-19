@@ -1,4 +1,7 @@
-![Print Server Logo](./image-1.png)
+<p align="left">
+  <img src="./logo-readme-dark.svg" alt="Zephyr Logo" height="80" style="vertical-align: middle; margin-right: 20px;" />
+  <img src="./image-1.png" alt="Print Server Logo" height="80" style="vertical-align: middle;" />
+</p>
 
 <p align="left">
   <a href="https://www.zephyrproject.org/"><img src="https://img.shields.io/badge/Zephyr_RTOS-3.x-blue?style=flat-square&logo=zephyr&logoColor=white" alt="Zephyr RTOS"></a>

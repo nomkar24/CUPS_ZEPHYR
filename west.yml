@@ -18,7 +18,7 @@ manifest:
       revision: zephyr
       path: modules/lib/zlib
     - name: pdfio
-      url: https://github.com/HubertYGuan/pdfio
+      url: https://github.com/nomkar24/pdfio.git
       revision: zephyr
       path: modules/lib/pdfio
     - name: libcups

@@ -2,7 +2,7 @@
 #define WIFI_CONFIG_H
 
 
-#define SSID "yuhanli"
-#define PSK ""
+#define SSID "EV_LAB"
+#define PSK "aaibaba1"
 
 #endif /* WIFI_CONFIG_H */

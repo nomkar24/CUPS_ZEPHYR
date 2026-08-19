@@ -14,7 +14,7 @@ manifest:
           - littlefs
           - mbedtls
     - name: zlib
-      url: https://github.com/HubertYGuan/zlib
+      url: https://github.com/nomkar24/zlib.git
       revision: zephyr
       path: modules/lib/zlib
     - name: pdfio

@@ -218,13 +218,17 @@ I used runtime statistics (*CONFIG\_SYS\_HEAP\_RUNTIME\_STATS*) to monitor and f
 
    After spending a lot of time reviewing serial monitor logs and fixing several issues, the printer finally responded but not as expected. Instead of printing a simple 7 kB PDF with text OpenPrinting, it produced the following output (RaS2). The ESP32 was correctly forwarding all the data it received from the local machine, but the printer was unable to decode the incoming print stream. 
 
-   ![][image6]  
+   <p align="center">
+  <img src="../assets/11.jpg" width="80%" />
+</p> 
    
 
    After a few more fixes, I somehow made things even worse. The printer entered an infinite loop, continuously printing garbage characters without stopping. The only way to stop it was to switch off the printer directly.[\[video\]](https://drive.google.com/file/d/1VXOTIzhWR1RAQlEMBc1HkR6qMeG5izR8/view?usp=share_link)  
    Eventually, after tracking down the remaining issues, the ESP32-S3 successfully worked as an IPP bridge between the local machine and the printer. With that milestone achieved, I moved on to implementing IPP-over-USB support which, unsurprisingly, resulted in another round of garbage output.
 
-   ![][image7]
+   <p align="center">
+  <img src="../assets/12.jpg" width="80%" />
+</p>
 
 # Future Work : 
 

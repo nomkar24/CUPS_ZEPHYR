@@ -163,7 +163,7 @@ As soon as the ESP32 receives the spooled data, it forwards the print job to the
 
 The printed output is shown below.
 
-Since this was the first successful print using the ESP32 printer server over USB, I also recorded a [video](https://drive.google.com/file/d/1eY1ciZPsUh6t_blRaXE3Kxf9j6KCyEIC/view?usp=sharing) of the moment as proof.
+Since this was the first successful print using the ESP32 printer server over USB, I also recorded a [video](../assets/Printer_USB.mp4) of the moment as proof.
 
 # Major Challenges : 
 
@@ -238,7 +238,8 @@ I used runtime statistics (*CONFIG\_SYS\_HEAP\_RUNTIME\_STATS*) to monitor and f
 </p> 
    
 
-   After a few more fixes, I somehow made things even worse. The printer entered an infinite loop, continuously printing garbage characters without stopping. The only way to stop it was to switch off the printer directly.[\[video\]](https://drive.google.com/file/d/1VXOTIzhWR1RAQlEMBc1HkR6qMeG5izR8/view?usp=share_link)  
+   After a few more fixes, I somehow made things even worse. The printer entered an infinite loop, continuously printing garbage characters without stopping. The only way to stop it was to switch off the printer directly.[[video]](../assets/Garbage_Print.mp4)
+
    Eventually, after tracking down the remaining issues, the ESP32-S3 successfully worked as an IPP bridge between the local machine and the printer. With that milestone achieved, I moved on to implementing IPP-over-USB support which, unsurprisingly, resulted in another round of garbage output.
 
    <p align="center">

@@ -6,6 +6,8 @@
 
 # Introduction : 
 
+<div align="justify">
+
 As printers move further toward driverless IPP Everywhere printing, OpenPrinting's printing software stands at the forefront of this movement,  enabling various driverless print servers. However, for such a print server to be integrated directly within and/or sold with a printer while keeping costs low, a suitable low power, low form factor platform to run the server is needed. This places the system in the realm of embedded systems, where real time operating systems (RTOSes) are preferred for their reliability for time critical tasks. However, full fledged print servers are currently only supported on general purpose operating systems (GPOSes) such as Linux, which many embedded microcontrollers and some system on chip (SoC) based platforms do not support.
 
 This project aims to address this issue by continuing the porting of the OpenPrinting printing stack, including libraries like libcups and parts of PAPPL, as well as applications such as PAPPL and CUPS, to Zephyr, a major open source RTOS. Furthermore, details on hardware requirements, IPP-over-USB communication with printers, and software changes should be investigated.
@@ -160,7 +162,7 @@ Since this was the first successful print using the ESP32 printer server over US
      
      
 * **AP Isolation:** Testing over a smartphone hotspot failed because AP Isolation prevented communication between the computer and the ESP32 S3. Switching to the lab WiFi router resolved this issue.  
-*   
+ 
 * **Network Resource Exhaustion:** PAPPL serves multiple resources (HTML, CSS, images, etc.) using concurrent TCP connections. The default Zephyr TCP buffer configuration was insufficient, leading to packet congestion and system instability.  
   The problem was resolved by increasing the TCP window sizes and network buffer counts in prj.conf:
 
@@ -255,6 +257,8 @@ Who knows, maybe it's a printer company's worst nightmare... or maybe it's the b
 Either way, it has been an unforgettable journey.
 
 Thanks.
+
+</div>
 
 
 [image1]: ../assets/1.png

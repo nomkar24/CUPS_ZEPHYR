@@ -115,8 +115,8 @@ Connections:
 * CC2 → 5.1 kΩ pull down resistor to GND
 
 <p align="center">
-  <img src="../assets/6.jpeg" height="300" />
-  <img src="../assets/8.jpeg" height="300" />
+  <img src="../assets/6.jpeg" height="400" />
+  <img src="../assets/8.jpeg" height="400" />
 </p>
 
 1. In the Office Printer section of the web interface, click Connect Printer.  

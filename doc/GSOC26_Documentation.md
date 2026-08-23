@@ -1,9 +1,11 @@
+<div align="center">
+
 # [Porting OpenPrinting to Zephyr](https://openprinting.github.io/gsoc/2026/Porting-OpenPrinting-Software-to-Zephyr) 
 
 ## GSOC’26 : The Linux Foundation, OpenPrinting
 
 ##  [Omkar Nanajkar](https://www.linkedin.com/in/nomkar/) 
-
+</div>
 # Introduction : 
 
 <div align="justify">

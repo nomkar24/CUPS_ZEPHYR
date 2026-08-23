@@ -26,7 +26,7 @@ The print server acts as a bridge between network clients and physical USB print
 
 ## Documentation
 
-For a detailed technical analysis, system design, and evaluation reports, see the [GSOC26 Documentation](./doc/GSOC26_Documentation.pdf) file in this repository.
+For a detailed technical analysis, system design, and evaluation reports, see the [GSOC26 Documentation](./doc/GSOC26_Documentation.md) file in this repository.
 
 ## Features
 

@@ -114,7 +114,10 @@ Connections:
 * CC1 → 5.1 kΩ pull down resistor to GND  
 * CC2 → 5.1 kΩ pull down resistor to GND
 
-
+<p align="center">
+  <img src="../assets/6.jpeg" height="300" />
+  <img src="../assets/8.jpeg" height="300" />
+</p>
 
 1. In the Office Printer section of the web interface, click Connect Printer.  
 2. From the list of available printers, select the printer whose name contains the USB keyword, and then click Connect Printer.  
@@ -249,6 +252,7 @@ Thanks.
 [image3]: ../assets/3.png
 [image4]: ../assets/4.jpeg
 [image5]: ../assets/5.jpeg
-[image6]: ../assets/6.png
-[image7]: ../assets/7.png
+[image6]: ../assets/6.jpeg
+[image7]: ../assets/7.jpeg
+[image8]: ../assets/8.jpeg
 [video1]: ../assets/Printer_WIFI.mp4

@@ -112,8 +112,8 @@ Since this was the first successful print using the ESP32 printer server, I also
 </p>
 
 <p align="center">
-  <img src="../assets/13.jpg" height="400" />
-  <img src="../assets/15.jpeg" height="400" />
+  <img src="../assets/13.jpg" height="350" />
+  <img src="../assets/15.jpeg" height="350" />
 </p>
 
 

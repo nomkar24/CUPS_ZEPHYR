@@ -5,6 +5,7 @@
 ## GSOC’26 : The Linux Foundation, OpenPrinting
 
 ##  [Omkar Nanajkar](https://www.linkedin.com/in/nomkar/) 
+
 </div>
 
 # Introduction : 
@@ -68,7 +69,7 @@ If you need to access the interface from a laptop, consider using Lynx, a lightw
 
 The webpage should look like this:  
  
-<p align="left">
+<p align="center">
   <img src="../assets/4.jpeg" width="49%" />
   <img src="../assets/5.jpeg" width="49%" />
 </p>
@@ -167,7 +168,7 @@ Since this was the first successful print using the ESP32 printer server over US
 
 # Major Challenges : 
 
-1. ## Stabilizing Web Page : 
+## 1. Stabilizing Web Page : 
 
    The initial management interface used a USB CDC (Serial) command line interface to monitor PAPPL and printer status. While useful for debugging, it was not suitable for end users. To provide a better user experience, the interface was migrated to PAPPL's built in Web Interface on the standard IPP port (631).  
    During deployment, the Web UI frequently timed out or caused the ESP32 S3 to hang. Two issues were identified:
@@ -179,7 +180,7 @@ Since this was the first successful print using the ESP32 printer server over US
 * **Network Resource Exhaustion:** PAPPL serves multiple resources (HTML, CSS, images, etc.) using concurrent TCP connections. The default Zephyr TCP buffer configuration was insufficient, leading to packet congestion and system instability.  
   The problem was resolved by increasing the TCP window sizes and network buffer counts in prj.conf:
 
-```
+```ini
 CONFIG_NET_PKT_RX_COUNT=80
 CONFIG_NET_PKT_TX_COUNT=80
 CONFIG_NET_BUF_RX_COUNT=144
@@ -192,33 +193,33 @@ CONFIG_NET_BUF_TX_COUNT=144
   <img src="../assets/9.png" width="80%" />
 </p>
 
-2. ## Memory constraints : 
+## 2. Memory Constraints : 
 
-   Operating both the PAPPL framework and the Zephyr network stack on an ESP32 S3 microcontroller proved to be a significant challenge due to the device's limited SRAM and Flash. The system frequently reached its hardware boundaries, necessitating several strategic memory optimizations to maintain system stability and avoid crashes caused by memory exhaustion.
+Operating both the PAPPL framework and the Zephyr network stack on an ESP32 S3 microcontroller proved to be a significant challenge due to the device's limited SRAM and Flash. The system frequently reached its hardware boundaries, necessitating several strategic memory optimizations to maintain system stability and avoid crashes caused by memory exhaustion.
 
-   #### **1\. Disabling Unnecessary Services**
+### 1. Disabling Unnecessary Services
 
-   To reclaim vital heap and stack space, I disabled several non essential shells and diagnostic tools:
+To reclaim vital heap and stack space, I disabled several non essential shells and diagnostic tools:
 
 * **USB CDC Console**: I transitioned to standard UART logging, which eliminated the need for active USB endpoints and their associated buffers.  
 * **Thread Analyzer & Tracing**: Profiling overhead was removed by setting *CONFIG\_THREAD\_ANALYZER* and *CONFIG\_TRACING* to no.  
 * **Shell Modules**: Various unused modules, such as the kernel and memory shells (*CONFIG\_KERNEL\_SHELL=n*), were removed from the *prj.conf* file.
 
-#### **2\. Asset Offloading to Flash ROM**
+### 2. Asset Offloading to Flash ROM
 
 The web interface icons and logos were initially consuming dynamic RAM. These large PNG assets were migrated to static storage to preserve memory.
 
 * I converted the web assets into *const static uint8\_t* arrays within header files like *label-png.h*.  
 * By using the *const* qualifier, the compiler stored these files in the SPI Flash ROM instead of SRAM, recovering more than 170 KB of memory.
 
-  #### **3\. Minimizing Localization Data**
+### 3. Minimizing Localization Data
 
   PAPPL typically includes several language catalogs, but compiling these string tables uses a large amount of Flash space.
 
 * I removed all translation files, keeping only the essential English strings for the interface.  
 * This optimization significantly lowered the footprint of the IPP dictionary and saved substantial Flash storage.
 
-#### **4\. Tuning Stacks and Buffers**
+### 4. Tuning Stacks and Buffers
 
 I used runtime statistics (*CONFIG\_SYS\_HEAP\_RUNTIME\_STATS*) to monitor and fine tune system stacks for the best performance :
 
@@ -229,20 +230,20 @@ I used runtime statistics (*CONFIG\_SYS\_HEAP\_RUNTIME\_STATS*) to monitor and f
   <img src="../assets/10.png" width="80%" />
 </p>
 
-3. ## Printing out Garbage values : 
+## 3. Printing out Garbage values : 
 
    After spending a lot of time reviewing serial monitor logs and fixing several issues, the printer finally responded but not as expected. Instead of printing a simple 7 kB PDF with text OpenPrinting, it produced the following output (RaS2). The ESP32 was correctly forwarding all the data it received from the local machine, but the printer was unable to decode the incoming print stream. 
 
-   <p align="center">
+<p align="center">
   <img src="../assets/11.jpg" width="80%" />
-</p> 
+</p>
    
 
    After a few more fixes, I somehow made things even worse. The printer entered an infinite loop, continuously printing garbage characters without stopping. The only way to stop it was to switch off the printer directly.[[video]](../assets/Garbage_Print.mp4)
 
    Eventually, after tracking down the remaining issues, the ESP32-S3 successfully worked as an IPP bridge between the local machine and the printer. With that milestone achieved, I moved on to implementing IPP-over-USB support which, unsurprisingly, resulted in another round of garbage output.
 
-   <p align="center">
+<p align="center">
   <img src="../assets/12.jpg" width="80%" />
 </p>
 

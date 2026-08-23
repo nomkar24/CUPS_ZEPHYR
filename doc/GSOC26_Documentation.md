@@ -31,9 +31,11 @@ Queue   : ipp/print/Office\_Printer
 
 Once added, the connection should be established, as shown below.
 
+![][image2]
+
 Verify properties. 
 
-![][image2]
+![][image3]
 
 Open the web interface by navigating to:
 
@@ -55,26 +57,10 @@ If you need to access the interface from a laptop, consider using Lynx, a lightw
 
 The webpage should look like this:  
  
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
-
-### 
+<p align="left">
+  <img src="../assets/4.jpeg" width="49%" />
+  <img src="../assets/5.jpeg" width="49%" />
+</p>
 
 ### **Part A: Connecting the ESP32 to a WiFi Printer**
 
@@ -121,7 +107,6 @@ Connections:
 * CC2 → 5.1 kΩ pull down resistor to GND
 
 
-![][image3]![][image4]
 
 1. In the Office Printer section of the web interface, click Connect Printer.  
 2. From the list of available printers, select the printer whose name contains the USB keyword, and then click Connect Printer.  
@@ -250,7 +235,7 @@ Thanks.
 [image1]: ../assets/1.png
 [image2]: ../assets/2.png
 [image3]: ../assets/3.png
-[image4]: ../assets/4.png
-[image5]: ../assets/5.png
+[image4]: ../assets/4.jpeg
+[image5]: ../assets/5.jpeg
 [image6]: ../assets/6.png
 [image7]: ../assets/7.png

@@ -111,6 +111,10 @@ Since this was the first successful print using the ESP32 printer server, I also
   </a>
 </p>
 
+<p align="center">
+  <img src="../assets/13.jpg" height="400" />
+  <img src="../assets/15.jpeg" height="400" />
+</p>
 
 
 ### **Part B: Connecting the ESP32 to a USB Printer**

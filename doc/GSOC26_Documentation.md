@@ -27,15 +27,21 @@ To connect the printer to your PC, first add an ESP32-S3 microcontroller board a
 Address : IP:631  
 Queue   : ipp/print/Office\_Printer
 
-![][image1]
+<p align="center">
+  <img src="../assets/1.png" width="80%" />
+</p>
 
 Once added, the connection should be established, as shown below.
 
-![][image2]
+<p align="center">
+  <img src="../assets/2.png" width="80%" />
+</p>
 
 Verify properties. 
 
-![][image3]
+<p align="center">
+  <img src="../assets/3.png" width="80%" />
+</p>
 
 Open the web interface by navigating to:
 
@@ -76,11 +82,15 @@ Note : Keep the PDF size as small as possible (preferably in KB) for better perf
 
 Run the following command to check the list of available printers :
 
-*lpstat \-p*
+```bash
+lpstat -p
+```
 
 To print a PDF, use :
 
-*lpstat \-d \<PrinterName\> \<PdfName.pdf\>*
+```bash
+lpstat -d <PrinterName> <PdfName.pdf>
+```
 
 When you execute the second command, the PDF is first converted into Apple Raster format by the CUPS. The rasterized print job is then spooled and sent to the ESP32 S3 over IPP-over-Wi-Fi.
 
@@ -88,11 +98,9 @@ As soon as the ESP32 receives the spooled data, it forwards the print job to the
 
 The printed output is shown below.
 
-Since this was the first successful print using the ESP32 printer server, I also recorded a [video](https://drive.google.com/file/d/1cl0pwVlnuKsUh3Sr4W4J8HSOmpdsiIWe/view?usp=share_link) of the moment as proof.
+Since this was the first successful print using the ESP32 printer server, I also recorded a video of the moment as proof.
 
-# 
-
-# 
+<video src="../assets/Printer_WIFI.mp4" controls width="100%"></video>
 
 ### **Part B: Connecting the ESP32 to a USB Printer**
 
@@ -121,11 +129,15 @@ Note : Keep the PDF size as small as possible (preferably in KB) for better perf
 
 Run the following command to check the list of available printers :
 
-*lpstat \-p*
+```bash
+lpstat -p
+```
 
 To print a PDF, use :
 
-*lpstat \-d \<PrinterName\> \<PdfName.pdf\>*
+```bash
+lpstat -d <PrinterName> <PdfName.pdf>
+```
 
 When you execute the second command, the PDF is first converted into Apple Raster format by the CUPS. The rasterized print job is then spooled and sent to the ESP32 S3 over IPP-over-USB.
 
@@ -239,3 +251,4 @@ Thanks.
 [image5]: ../assets/5.jpeg
 [image6]: ../assets/6.png
 [image7]: ../assets/7.png
+[video1]: ../assets/Printer_WIFI.mp4

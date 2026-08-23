@@ -173,6 +173,10 @@ CONFIG_NET_BUF_TX_COUNT=144
 
   After tuning these parameters, the Web Administration Interface became stable and responsive. This demonstrated the importance of properly configuring Zephyr's network stack when running resource intensive applications such as PAPPL on embedded systems.
 
+<p align="center">
+  <img src="../assets/9.png" width="80%" />
+</p>
+
 2. ## Memory constraints : 
 
    Operating both the PAPPL framework and the Zephyr network stack on an ESP32 S3 microcontroller proved to be a significant challenge due to the device's limited SRAM and Flash. The system frequently reached its hardware boundaries, necessitating several strategic memory optimizations to maintain system stability and avoid crashes caused by memory exhaustion.
@@ -206,7 +210,9 @@ I used runtime statistics (*CONFIG\_SYS\_HEAP\_RUNTIME\_STATS*) to monitor and f
 * The memory pool for the system heap was set to 49152 to prevent crashes during heavy network activity.  
 * Dynamic stacks, such as *CONFIG\_CUPS\_THREAD\_SIZE*, were increased to 131072 to handle complex AirPrint rendering tasks without causing overflows.
 
-  ![][image5]
+<p align="center">
+  <img src="../assets/10.png" width="80%" />
+</p>
 
 3. ## Printing out Garbage values : 
 
@@ -255,4 +261,6 @@ Thanks.
 [image6]: ../assets/6.jpeg
 [image7]: ../assets/7.jpeg
 [image8]: ../assets/8.jpeg
+[image9]: ../assets/9.png
+[image10]: ../assets/10.png
 [video1]: ../assets/Printer_WIFI.mp4

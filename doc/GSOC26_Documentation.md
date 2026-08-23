@@ -107,7 +107,7 @@ Since this was the first successful print using the ESP32 printer server, I also
 
 <p align="center">
   <a href="../assets/Printer_WIFI.mp4">
-    <img src="../assets/Printer_WIFI.gif" width="80%" />
+    <img src="../assets/Printer_WIFI.gif" width="70%" />
   </a>
 </p>
 

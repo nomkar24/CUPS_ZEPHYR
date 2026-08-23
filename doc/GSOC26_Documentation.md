@@ -103,9 +103,15 @@ As soon as the ESP32 receives the spooled data, it forwards the print job to the
 
 The printed output is shown below.
 
-Since this was the first successful print using the ESP32 printer server, I also recorded a video of the moment as proof.
+Since this was the first successful print using the ESP32 printer server, I also recorded a video of the moment as proof:
 
-<video src="https://github.com/nomkar24/CUPS_ZEPHYR/blob/main/assets/Printer_WIFI.mp4?raw=true" controls width="100%"></video>
+<p align="center">
+  <a href="../assets/Printer_WIFI.mp4">
+    <img src="../assets/Printer_WIFI.gif" width="80%" />
+  </a>
+</p>
+
+
 
 ### **Part B: Connecting the ESP32 to a USB Printer**
 

@@ -95,7 +95,7 @@ lpstat -p
 To print a PDF, use :
 
 ```bash
-lpstat -d <PrinterName> <PdfName.pdf>
+lp -d <PrinterName> <PdfName.pdf>
 ```
 
 When you execute the second command, the PDF is first converted into Apple Raster format by the CUPS. The rasterized print job is then spooled and sent to the ESP32 S3 over IPP-over-Wi-Fi.
